@@ -1,8 +1,13 @@
 # txtar
 
-`txtar` is a Go package and CLI tool for the txtar archive format, originally from `golang.org/x/tools/txtar`.
+`txtar` is a Go package and CLI tool for the txtar archive format, forked from [golang.org/x/tools/txtar](https://cs.opensource.google/go/x/tools/+/master:txtar/).
 
-This version adds read/write capabilities to the archive and a filesystem implementation, along with a full-featured CLI.
+This project extends the original library with significant enhancements, including:
+
+- **Read/Write Library**: Adds support for modifying archives programmatically (`Set`, `Delete`).
+- **Extended Filesystem**: Implements a full `fs.FS` interface with write capabilities (`Create`, `Remove`, `Rename`), which the original library lacks.
+- **Streaming Version**: Creating a streaming version for efficient processing of large archives.
+- **CLI Version**: A comprehensive command-line tool for creating, extracting, and managing archives.
 
 ## Installation
 
@@ -68,6 +73,8 @@ txtar cat -t archive.txtar file1
 
 ### Archive Read/Write
 
+The `Archive` struct now supports direct modification:
+
 ```go
 a := new(txtar.Archive)
 a.Set("file.txt", []byte("content"))
@@ -76,11 +83,21 @@ a.Delete("file.txt")
 
 ### FileSystem
 
+The library provides a filesystem implementation that supports standard `fs.FS` operations as well as write operations:
+
 ```go
 fsys, err := txtar.FS(a)
+
+// Create a new file within the archive
 w, err := fsys.Create("file.txt")
+if err != nil {
+    log.Fatal(err)
+}
 w.Write([]byte("content"))
 w.Close()
+
+// Read the file using standard fs.FS
+data, err := fs.ReadFile(fsys, "file.txt")
 ```
 
 ## License
