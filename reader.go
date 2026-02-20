@@ -143,7 +143,8 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 
 // All returns an iterator over the files in the archive.
 // The yielded File has a nil Data field.
-// The caller must read the file content from r before the next iteration.
+// The caller must read the file content from r (the Reader itself) before the next iteration.
+// This is similar to calling Next() in a loop.
 func (r *Reader) All() iter.Seq2[File, error] {
 	return func(yield func(File, error) bool) {
 		for {
