@@ -1,0 +1,14 @@
+comment1
+comment2
+-- file1 --
+File 1 text.
+-- foo ---
+More file 1 text.
+-- file 2 --
+File 2 text.
+-- empty --
+-- noNL --
+hello world
+-- empty filename line --
+some content
+-- --

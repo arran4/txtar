@@ -2,28 +2,17 @@ package txtar
 
 import (
 	"bytes"
+	_ "embed"
 	"io"
 	"strings"
 	"testing"
 )
 
-func TestReader(t *testing.T) {
-	text := `comment1
-comment2
--- file1 --
-File 1 text.
--- foo ---
-More file 1 text.
--- file 2 --
-File 2 text.
--- empty --
--- noNL --
-hello world
--- empty filename line --
-some content
--- --`
+//go:embed testdata/test.txtar
+var testTxtar string
 
-	r := NewReader(strings.NewReader(text))
+func TestReader(t *testing.T) {
+	r := NewReader(strings.NewReader(testTxtar))
 
 	// Read comment
 	var comment bytes.Buffer
