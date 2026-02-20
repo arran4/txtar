@@ -213,3 +213,79 @@ content of file1`
 		t.Errorf("got %q, want content of file1", got)
 	}
 }
+
+func TestReader_All(t *testing.T) {
+	text := `-- file1 --
+content1
+-- file2 --
+content2`
+	r := NewReader(strings.NewReader(text))
+
+	var names []string
+	var contents []string
+
+	for f, err := range r.All() {
+		if err != nil {
+			t.Fatalf("All: %v", err)
+		}
+		names = append(names, f.Name)
+		b, err := io.ReadAll(r)
+		if err != nil {
+			t.Fatalf("ReadAll: %v", err)
+		}
+		contents = append(contents, string(b))
+	}
+
+	wantNames := []string{"file1", "file2"}
+	if len(names) != len(wantNames) {
+		t.Fatalf("got %d files, want %d", len(names), len(wantNames))
+	}
+	for i, name := range names {
+		if name != wantNames[i] {
+			t.Errorf("file %d: got %q, want %q", i, name, wantNames[i])
+		}
+	}
+
+	wantContents := []string{"content1\n", "content2"} // file2 has no trailing newline in input
+	for i, content := range contents {
+		if content != wantContents[i] {
+			t.Errorf("content %d: got %q, want %q", i, content, wantContents[i])
+		}
+	}
+}
+
+func TestReader_AllWithData(t *testing.T) {
+	text := `-- file1 --
+content1
+-- file2 --
+content2`
+	r := NewReader(strings.NewReader(text))
+
+	var names []string
+	var contents []string
+
+	for f, err := range r.AllWithData() {
+		if err != nil {
+			t.Fatalf("AllWithData: %v", err)
+		}
+		names = append(names, f.Name)
+		contents = append(contents, string(f.Data))
+	}
+
+	wantNames := []string{"file1", "file2"}
+	if len(names) != len(wantNames) {
+		t.Fatalf("got %d files, want %d", len(names), len(wantNames))
+	}
+	for i, name := range names {
+		if name != wantNames[i] {
+			t.Errorf("file %d: got %q, want %q", i, name, wantNames[i])
+		}
+	}
+
+	wantContents := []string{"content1\n", "content2"}
+	for i, content := range contents {
+		if content != wantContents[i] {
+			t.Errorf("content %d: got %q, want %q", i, content, wantContents[i])
+		}
+	}
+}

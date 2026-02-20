@@ -3,6 +3,7 @@ package txtar
 import (
 	"bufio"
 	"io"
+	"iter"
 )
 
 // Reader provides sequential access to the contents of a txtar archive.
@@ -138,4 +139,51 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		}
 	}
 	return n, err
+}
+
+// All returns an iterator over the files in the archive.
+// The yielded File has a nil Data field.
+// The caller must read the file content from r before the next iteration.
+func (r *Reader) All() iter.Seq2[File, error] {
+	return func(yield func(File, error) bool) {
+		for {
+			f, err := r.Next()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				yield(File{}, err)
+				return
+			}
+			if !yield(f, nil) {
+				return
+			}
+		}
+	}
+}
+
+// AllWithData returns an iterator over the files in the archive.
+// The yielded File has its Data field populated with the file content.
+func (r *Reader) AllWithData() iter.Seq2[File, error] {
+	return func(yield func(File, error) bool) {
+		for {
+			f, err := r.Next()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				yield(File{}, err)
+				return
+			}
+			data, err := io.ReadAll(r)
+			if err != nil {
+				yield(File{}, err)
+				return
+			}
+			f.Data = data
+			if !yield(f, nil) {
+				return
+			}
+		}
+	}
 }
