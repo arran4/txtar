@@ -94,6 +94,11 @@ func (a *Archive) Set(name string, data []byte) {
 	a.Files = append(a.Files, File{Name: name, Data: data})
 }
 
+// SetComment replaces the archive comment with the given text.
+func (a *Archive) SetComment(text string) {
+	a.Comment = []byte(text)
+}
+
 // Delete removes all files with the given name from the archive.
 func (a *Archive) Delete(name string) {
 	var kept []File

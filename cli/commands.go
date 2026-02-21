@@ -291,3 +291,28 @@ func Cat(archive string, txt bool, files ...string) {
         }
     }
 }
+
+// Comment is a subcommand `txtar comment` -- Show or set archive comment
+//
+// Flags:
+//
+//	archive:	@1	Archive file
+//	text:		...	Comment text (optional). If present, sets the comment.
+func Comment(archive string, text ...string) {
+	a, err := txtar.ParseFile(archive)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+		os.Exit(1)
+	}
+
+	if len(text) > 0 {
+		comment := strings.Join(text, " ")
+		a.SetComment(comment)
+		if err := os.WriteFile(archive, txtar.Format(a), 0644); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing archive: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		fmt.Print(string(a.Comment))
+	}
+}
