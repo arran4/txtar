@@ -307,39 +307,38 @@ func Comment(comment string, file string, archive string) {
 		os.Exit(1)
 	}
 
-	if comment != "" || file != "" {
-		if comment != "" && file != "" {
-			fmt.Fprintf(os.Stderr, "Error: cannot specify both --comment and --file\n")
-			os.Exit(1)
-		}
-
-		var text string
-		if comment != "" {
-			text = comment
-		} else {
-			if file == "-" {
-				data, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error reading stdin: %v\n", err)
-					os.Exit(1)
-				}
-				text = string(data)
-			} else {
-				data, err := os.ReadFile(file)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error reading file %s: %v\n", file, err)
-					os.Exit(1)
-				}
-				text = string(data)
-			}
-		}
-
-		a.SetComment(text)
-		if err := os.WriteFile(archive, txtar.Format(a), 0644); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing archive: %v\n", err)
-			os.Exit(1)
-		}
-	} else {
+	if comment == "" && file == "" {
 		fmt.Print(string(a.Comment))
+		return
+	}
+
+	if comment != "" && file != "" {
+		fmt.Fprintf(os.Stderr, "Error: cannot specify both --comment and --file\n")
+		os.Exit(1)
+	}
+
+	var text string
+	if comment != "" {
+		text = comment
+	} else if file == "-" {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading stdin: %v\n", err)
+			os.Exit(1)
+		}
+		text = string(data)
+	} else {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading file %s: %v\n", file, err)
+			os.Exit(1)
+		}
+		text = string(data)
+	}
+
+	a.SetComment(text)
+	if err := os.WriteFile(archive, txtar.Format(a), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing archive: %v\n", err)
+		os.Exit(1)
 	}
 }
