@@ -13,9 +13,6 @@ func TestCommentIntegration(t *testing.T) {
 	tmpDir := t.TempDir()
 	binPath := filepath.Join(tmpDir, "txtar")
 
-	// We assume we are running in cmd/txtar directory or can find it.
-	// But go test ./... runs in each package dir.
-	// So we are in cmd/txtar.
 	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
 	if out, err := buildCmd.CombinedOutput(); err != nil {
 		t.Fatalf("build failed: %v\n%s", err, out)
@@ -32,11 +29,6 @@ func TestCommentIntegration(t *testing.T) {
 	archivePath := filepath.Join(tmpDir, "archive.txtar")
 
 	// 3. Create archive
-	// Usage: txtar create [-r] [-t] [--name] [--depth] file...
-	// We want to store relative path "test.txt".
-	// So we pass filePath but use -t (trim) maybe?
-	// Or just run from tmpDir?
-	// Let's run create command with Cwd = tmpDir
 	createCmd := exec.Command(binPath, "create", fileName)
 	createCmd.Dir = tmpDir
 	out, err := createCmd.CombinedOutput()
@@ -47,9 +39,9 @@ func TestCommentIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 4. Set comment
+	// 4. Set comment with -c
 	comment := "This is a comment"
-	setCmd := exec.Command(binPath, "comment", archivePath, comment)
+	setCmd := exec.Command(binPath, "comment", "-c", comment, archivePath)
 	if out, err := setCmd.CombinedOutput(); err != nil {
 		t.Fatalf("set comment failed: %v\n%s", err, out)
 	}
@@ -65,13 +57,6 @@ func TestCommentIntegration(t *testing.T) {
 	}
 
 	// 6. Verify content
-	// Usage: txtar cat archive [files...]
-	// Default prints content? No, checks -t flag for extraction content.
-	// Wait, Cat implementation:
-	// if !txt { print archive content }
-	// if txt { if files given, extract/print content of files; else print all files content }
-
-	// Check full archive content (should contain comment)
 	catCmd := exec.Command(binPath, "cat", archivePath)
 	out, err = catCmd.CombinedOutput()
 	if err != nil {
@@ -92,9 +77,9 @@ func TestCommentIntegration(t *testing.T) {
 		t.Errorf("file content: got %q, want %q", string(out), content)
 	}
 
-    // 7. Update comment
+    // 7. Update comment with -c
     newComment := "Updated comment"
-    updateCmd := exec.Command(binPath, "comment", archivePath, newComment)
+    updateCmd := exec.Command(binPath, "comment", "-c", newComment, archivePath)
     if out, err := updateCmd.CombinedOutput(); err != nil {
         t.Fatalf("update comment failed: %v\n%s", err, out)
     }
@@ -107,5 +92,26 @@ func TestCommentIntegration(t *testing.T) {
     }
     if strings.TrimSpace(string(out)) != newComment {
         t.Errorf("read updated comment: got %q, want %q", string(out), newComment)
+    }
+
+    // 8. Set comment from file with -f
+    commentFile := filepath.Join(tmpDir, "comment.txt")
+    fileComment := "Comment from file"
+    if err := os.WriteFile(commentFile, []byte(fileComment), 0644); err != nil {
+        t.Fatal(err)
+    }
+    fileCmd := exec.Command(binPath, "comment", "-f", commentFile, archivePath)
+    if out, err := fileCmd.CombinedOutput(); err != nil {
+        t.Fatalf("set comment from file failed: %v\n%s", err, out)
+    }
+
+    // Verify file update
+    readFileCmd := exec.Command(binPath, "comment", archivePath)
+    out, err = readFileCmd.CombinedOutput()
+    if err != nil {
+        t.Fatalf("read file comment failed: %v\n%s", err, out)
+    }
+    if strings.TrimSpace(string(out)) != fileComment {
+         t.Errorf("read file comment: got %q, want %q", string(out), fileComment)
     }
 }

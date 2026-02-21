@@ -16,8 +16,9 @@ var _ Cmd = (*Comment)(nil)
 type Comment struct {
 	*RootCmd
 	Flags         *flag.FlagSet
+	comment       string
+	file          string
 	archive       string
-	text          []string
 	SubCommands   map[string]Cmd
 	CommandAction func(c *Comment) error
 }
@@ -56,8 +57,38 @@ func (c *Comment) Execute(args []string) error {
 		}
 		if strings.HasPrefix(arg, "-") && arg != "-" {
 			name := arg
+			value := ""
+			hasValue := false
+			if strings.Contains(arg, "=") {
+				parts := strings.SplitN(arg, "=", 2)
+				name = parts[0]
+				value = parts[1]
+				hasValue = true
+			}
 			trimmedName := strings.TrimLeft(name, "-")
 			switch trimmedName {
+
+			case "comment", "c":
+				if !hasValue {
+					if i+1 < len(args) {
+						value = args[i+1]
+						i++
+					} else {
+						return fmt.Errorf("flag %s requires a value", name)
+					}
+				}
+				c.comment = value
+
+			case "file", "f":
+				if !hasValue {
+					if i+1 < len(args) {
+						value = args[i+1]
+						i++
+					} else {
+						return fmt.Errorf("flag %s requires a value", name)
+					}
+				}
+				c.file = value
 			case "help", "h":
 				c.Usage()
 				return nil
@@ -79,15 +110,6 @@ func (c *Comment) Execute(args []string) error {
 			c.archive = argVal
 		}
 	}
-	// Handle vararg text
-	{
-		varArgStart := 1
-		if varArgStart > len(remainingArgs) {
-			varArgStart = len(remainingArgs)
-		}
-		varArgs := remainingArgs[varArgStart:]
-		c.text = varArgs
-	}
 
 	if c.CommandAction != nil {
 		if err := c.CommandAction(c); err != nil {
@@ -107,11 +129,17 @@ func (c *RootCmd) NewComment() *Comment {
 		Flags:       set,
 		SubCommands: make(map[string]Cmd),
 	}
+
+	set.StringVar(&v.comment, "comment", "", "Set comment to text")
+	set.StringVar(&v.comment, "c", "", "Set comment to text")
+
+	set.StringVar(&v.file, "file", "", "Set comment from file use - for stdin")
+	set.StringVar(&v.file, "f", "", "Set comment from file use - for stdin")
 	set.Usage = v.Usage
 
 	v.CommandAction = func(c *Comment) error {
 
-		cli.Comment(c.archive, c.text...)
+		cli.Comment(c.comment, c.file, c.archive)
 		return nil
 	}
 

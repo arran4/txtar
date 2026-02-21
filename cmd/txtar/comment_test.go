@@ -22,6 +22,10 @@ func TestComment_Execute(t *testing.T) {
 	}
 
 	args := []string{}
+	args = append(args, "--comment")
+	args = append(args, "test")
+	args = append(args, "--file")
+	args = append(args, "test")
 	args = append(args, "test")
 
 	err := cmd.Execute(args)
@@ -32,6 +36,12 @@ func TestComment_Execute(t *testing.T) {
 		t.Error("CommandAction was not called")
 	}
 
+	if cmd.comment != "test" {
+		t.Errorf("Expected comment to be 'test', got '%v'", cmd.comment)
+	}
+	if cmd.file != "test" {
+		t.Errorf("Expected file to be 'test', got '%v'", cmd.file)
+	}
 	if cmd.archive != "test" {
 		t.Errorf("Expected archive to be 'test', got '%v'", cmd.archive)
 	}
