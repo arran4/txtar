@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -290,4 +291,54 @@ func Cat(archive string, txt bool, files ...string) {
             fmt.Print(string(content))
         }
     }
+}
+
+// Comment is a subcommand `txtar comment` -- Show or set archive comment
+//
+// Flags:
+//
+//	comment:	-c --comment	(default: "")	Set comment to text
+//	file:		-f --file		(default: "")	Set comment from file (use - for stdin)
+//	archive:	@1				Archive file
+func Comment(comment string, file string, archive string) {
+	a, err := txtar.ParseFile(archive)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+		os.Exit(1)
+	}
+
+	if comment == "" && file == "" {
+		fmt.Print(string(a.Comment))
+		return
+	}
+
+	if comment != "" && file != "" {
+		fmt.Fprintf(os.Stderr, "Error: cannot specify both --comment and --file\n")
+		os.Exit(1)
+	}
+
+	var text string
+	if comment != "" {
+		text = comment
+	} else if file == "-" {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading stdin: %v\n", err)
+			os.Exit(1)
+		}
+		text = string(data)
+	} else {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading file %s: %v\n", file, err)
+			os.Exit(1)
+		}
+		text = string(data)
+	}
+
+	a.SetComment(text)
+	if err := os.WriteFile(archive, txtar.Format(a), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing archive: %v\n", err)
+		os.Exit(1)
+	}
 }

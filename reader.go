@@ -2,6 +2,7 @@ package txtar
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"iter"
 )
@@ -14,6 +15,7 @@ type Reader struct {
 	atStartOfLine bool
 	nextFile      File
 	nextFileValid bool
+	filesStarted  bool
 	pending       []byte
 }
 
@@ -31,6 +33,7 @@ func NewReader(r io.Reader) *Reader {
 //
 // If there are no more files, Next returns io.EOF.
 func (r *Reader) Next() (File, error) {
+	r.filesStarted = true
 	// If we have a pending next file (found during Read), return it.
 	if r.nextFileValid {
 		f := r.nextFile
@@ -54,6 +57,16 @@ func (r *Reader) Next() (File, error) {
 	}
 
 	return File{}, io.EOF
+}
+
+// ReadComment reads the archive comment from the stream.
+// It can only be called at the beginning of the stream, before the first call to Next.
+// If the comment has already been skipped or read, it returns an error.
+func (r *Reader) ReadComment() ([]byte, error) {
+	if r.filesStarted || r.nextFileValid {
+		return nil, fmt.Errorf("comment already skipped")
+	}
+	return io.ReadAll(r)
 }
 
 // Read reads from the current file in the archive.
