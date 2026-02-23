@@ -22,7 +22,7 @@ import (
 func Create(recursive bool, trim bool, name string, depth int, files ...string) {
 	a := new(txtar.Archive)
 	for _, file := range files {
-		err := filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(file, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -37,7 +37,7 @@ func Create(recursive bool, trim bool, name string, depth int, files ...string) 
                 }
             }
 
-			if info.IsDir() {
+			if entry.IsDir() {
 				if !recursive && path != file {
 					return filepath.SkipDir
 				}
