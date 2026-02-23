@@ -19,6 +19,7 @@ type Create struct {
 	Flags         *flag.FlagSet
 	recursive     bool
 	trim          bool
+	follow        bool
 	name          string
 	depth         int
 	files         []string
@@ -93,6 +94,17 @@ func (c *Create) Execute(args []string) error {
 					c.trim = true
 				}
 
+			case "follow", "f":
+				if hasValue {
+					b, err := strconv.ParseBool(value)
+					if err != nil {
+						return fmt.Errorf("invalid boolean value for flag %s: %s", name, value)
+					}
+					c.follow = b
+				} else {
+					c.follow = true
+				}
+
 			case "name":
 				if !hasValue {
 					if i+1 < len(args) {
@@ -163,6 +175,9 @@ func (c *RootCmd) NewCreate() *Create {
 	set.BoolVar(&v.trim, "trim", false, "Trim directory prefix")
 	set.BoolVar(&v.trim, "t", false, "Trim directory prefix")
 
+	set.BoolVar(&v.follow, "follow", false, "Follow symlinks")
+	set.BoolVar(&v.follow, "f", false, "Follow symlinks")
+
 	set.StringVar(&v.name, "name", "", "Name filter glob pattern")
 
 	set.IntVar(&v.depth, "depth", -1, "Max depth")
@@ -171,7 +186,7 @@ func (c *RootCmd) NewCreate() *Create {
 
 	v.CommandAction = func(c *Create) error {
 
-		cli.Create(c.recursive, c.trim, c.name, c.depth, c.files...)
+		cli.Create(c.recursive, c.trim, c.follow, c.name, c.depth, c.files...)
 		return nil
 	}
 

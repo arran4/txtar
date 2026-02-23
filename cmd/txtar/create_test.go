@@ -24,6 +24,7 @@ func TestCreate_Execute(t *testing.T) {
 	args := []string{}
 	args = append(args, "--recursive")
 	args = append(args, "--trim")
+	args = append(args, "--follow")
 	args = append(args, "--name")
 	args = append(args, "test")
 	args = append(args, "--depth")
@@ -42,6 +43,9 @@ func TestCreate_Execute(t *testing.T) {
 	}
 	if cmd.trim != true {
 		t.Errorf("Expected trim to be true, got '%v'", cmd.trim)
+	}
+	if cmd.follow != true {
+		t.Errorf("Expected follow to be true, got '%v'", cmd.follow)
 	}
 	if cmd.name != "test" {
 		t.Errorf("Expected name to be 'test', got '%v'", cmd.name)

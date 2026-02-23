@@ -18,6 +18,7 @@ type Add struct {
 	*RootCmd
 	Flags         *flag.FlagSet
 	recursive     bool
+	follow        bool
 	archive       string
 	files         []string
 	SubCommands   map[string]Cmd
@@ -79,6 +80,17 @@ func (c *Add) Execute(args []string) error {
 				} else {
 					c.recursive = true
 				}
+
+			case "follow", "f":
+				if hasValue {
+					b, err := strconv.ParseBool(value)
+					if err != nil {
+						return fmt.Errorf("invalid boolean value for flag %s: %s", name, value)
+					}
+					c.follow = b
+				} else {
+					c.follow = true
+				}
 			case "help", "h":
 				c.Usage()
 				return nil
@@ -131,11 +143,14 @@ func (c *RootCmd) NewAdd() *Add {
 
 	set.BoolVar(&v.recursive, "recursive", false, "Recursive")
 	set.BoolVar(&v.recursive, "r", false, "Recursive")
+
+	set.BoolVar(&v.follow, "follow", false, "Follow symlinks")
+	set.BoolVar(&v.follow, "f", false, "Follow symlinks")
 	set.Usage = v.Usage
 
 	v.CommandAction = func(c *Add) error {
 
-		cli.Add(c.recursive, c.archive, c.files...)
+		cli.Add(c.recursive, c.follow, c.archive, c.files...)
 		return nil
 	}
 

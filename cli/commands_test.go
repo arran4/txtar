@@ -226,7 +226,7 @@ func TestCreate(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			Create(tt.recursive, tt.trim, tt.glob, tt.depth, tt.files...)
+			Create(tt.recursive, tt.trim, false, tt.glob, tt.depth, tt.files...)
 
 			w.Close()
 			os.Stdout = oldStdout

@@ -16,10 +16,11 @@ import (
 //
 //	recursive:	-r --recursive	(default: false)	Recursive
 //	trim:		-t --trim		(default: false)	Trim directory prefix
+//	follow:		-f --follow		(default: false)	Follow symlinks
 //	name:		--name			(default: "")		Name filter (glob pattern)
 //	depth:		--depth			(default: -1)		Max depth
 //	files:		...				Files/dirs to add
-func Create(recursive bool, trim bool, name string, depth int, files ...string) {
+func Create(recursive bool, trim bool, follow bool, name string, depth int, files ...string) {
 	a := new(txtar.Archive)
 	for _, file := range files {
 		err := filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
@@ -49,7 +50,7 @@ func Create(recursive bool, trim bool, name string, depth int, files ...string) 
 			}
 
 			// Skip symlinks to avoid including files outside the intended scope
-			if info.Mode()&os.ModeSymlink != 0 {
+			if !follow && info.Mode()&os.ModeSymlink != 0 {
 				return nil
 			}
 
@@ -137,9 +138,10 @@ func List(archive string) {
 // Flags:
 //
 //	recursive:	-r --recursive	(default: false)	Recursive
+//	follow:		-f --follow		(default: false)	Follow symlinks
 //	archive:	@1	Archive file
 //	files:		...	Files to add
-func Add(recursive bool, archive string, files ...string) {
+func Add(recursive bool, follow bool, archive string, files ...string) {
 	a, err := txtar.ParseFile(archive)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -160,7 +162,7 @@ func Add(recursive bool, archive string, files ...string) {
 					return nil
 				}
 				// Skip symlinks
-				if info.Mode()&os.ModeSymlink != 0 {
+				if !follow && info.Mode()&os.ModeSymlink != 0 {
 					return nil
 				}
 				data, err := os.ReadFile(path)
@@ -200,10 +202,11 @@ func Add(recursive bool, archive string, files ...string) {
 // Flags:
 //
 //	recursive:	-r --recursive	(default: false)	Recursive
+//	follow:		-f --follow		(default: false)	Follow symlinks
 //	archive:	@1	Archive file
 //	files:		...	Files to append
-func Append(recursive bool, archive string, files ...string) {
-	Add(recursive, archive, files...)
+func Append(recursive bool, follow bool, archive string, files ...string) {
+	Add(recursive, follow, archive, files...)
 }
 
 // Delete is a subcommand `txtar delete` -- Delete files from archive

@@ -23,6 +23,7 @@ func TestAdd_Execute(t *testing.T) {
 
 	args := []string{}
 	args = append(args, "--recursive")
+	args = append(args, "--follow")
 	args = append(args, "test")
 
 	err := cmd.Execute(args)
@@ -35,6 +36,9 @@ func TestAdd_Execute(t *testing.T) {
 
 	if cmd.recursive != true {
 		t.Errorf("Expected recursive to be true, got '%v'", cmd.recursive)
+	}
+	if cmd.follow != true {
+		t.Errorf("Expected follow to be true, got '%v'", cmd.follow)
 	}
 	if cmd.archive != "test" {
 		t.Errorf("Expected archive to be 'test', got '%v'", cmd.archive)

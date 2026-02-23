@@ -9,6 +9,7 @@ Subcommands:
 
 Flags:
     --recursive, -r    (default: false)   Recursive
+    --follow, -f       (default: false)   Follow symlinks
 
 Positional Arguments:
     archive    Archive file
