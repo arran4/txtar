@@ -248,3 +248,91 @@ func TestCreate(t *testing.T) {
 		})
 	}
 }
+
+func TestCat(t *testing.T) {
+	// Setup temporary directory
+	tmpDir := t.TempDir()
+	archivePath := filepath.Join(tmpDir, "test.txtar")
+
+	// Create archive with 3 files
+	a := new(txtar.Archive)
+	a.Files = []txtar.File{
+		{Name: "file1.txt", Data: []byte("content1\n")},
+		{Name: "file2.go", Data: []byte("content2\n")},
+		{Name: "sub/file3.txt", Data: []byte("content3\n")},
+	}
+	data := txtar.Format(a)
+	if err := os.WriteFile(archivePath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name     string
+		args     []string
+		want     string
+		contains bool // if false, exact match required
+	}{
+		{
+			name: "no args (all files)",
+			args: []string{},
+			want: "content1\ncontent2\ncontent3\n",
+		},
+		{
+			name: "single file",
+			args: []string{"file2.go"},
+			want: "content2\n",
+		},
+		{
+			name: "multiple files ordered",
+			args: []string{"file1.txt", "file2.go"},
+			want: "content1\ncontent2\n",
+		},
+		{
+			name: "multiple files reordered",
+			args: []string{"file2.go", "file1.txt"},
+			want: "content2\ncontent1\n",
+		},
+		{
+			name: "pattern",
+			args: []string{"*.txt"},
+			want: "content1\n",
+		},
+		{
+			name: "pattern with subdir",
+			args: []string{"*/*.txt"},
+			want: "content3\n",
+		},
+		{
+			name: "multiple patterns",
+			args: []string{"*.txt", "*.go"},
+			want: "content1\ncontent2\n",
+		},
+		{
+			name: "overlapping patterns",
+			args: []string{"*.txt", "*.txt"},
+			want: "content1\ncontent1\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Capture stdout
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			Cat(archivePath, true, tt.args...)
+
+			w.Close()
+			os.Stdout = oldStdout
+
+			var buf bytes.Buffer
+			io.Copy(&buf, r)
+			got := buf.String()
+
+			if got != tt.want {
+				t.Errorf("Cat() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
