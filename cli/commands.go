@@ -48,6 +48,11 @@ func Create(recursive bool, trim bool, name string, depth int, files ...string) 
 				return nil
 			}
 
+			// Skip symlinks to avoid including files outside the intended scope
+			if info.Mode()&os.ModeSymlink != 0 {
+				return nil
+			}
+
 			if depth >= 0 && d > depth {
 				return nil
 			}
@@ -152,6 +157,10 @@ func Add(recursive bool, archive string, files ...string) {
 					return err
 				}
 				if info.IsDir() {
+					return nil
+				}
+				// Skip symlinks
+				if info.Mode()&os.ModeSymlink != 0 {
 					return nil
 				}
 				data, err := os.ReadFile(path)
