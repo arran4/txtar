@@ -90,40 +90,75 @@ func Create(recursive bool, trim bool, name string, depth int, files ...string) 
 //
 //	archive:	@1	Archive file
 func List(archive string) {
-	a, err := txtar.ParseFile(archive)
+	f, err := os.Open(archive)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error opening archive: %v\n", err)
 		os.Exit(1)
 	}
+	defer f.Close()
+
+	r := txtar.NewReader(f)
 
 	// Calculate offsets
 	// Start with comment
-	offset := int64(len(txtar.FixNL(a.Comment)))
+	comment, err := r.ReadComment()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading archive comment: %v\n", err)
+		os.Exit(1)
+	}
+	offset := int64(len(txtar.FixNL(comment)))
 
-	for i, f := range a.Files {
-		marker := fmt.Sprintf("-- %s --\n", f.Name)
-		// Note: Format uses fixNL on data, so ensure we account for that.
-		// But marker line is exactly formatted.
-		// Wait, does Format add extra newlines or spacing?
-		// fmt.Fprintf(&buf, "-- %s --\n", f.Name)
-		// buf.Write(fixNL(f.Data))
+	// Reuse buffer for reading content
+	buf := make([]byte, 32*1024)
 
-		// So offset points to start of marker? Or start of file content?
-		// Usually "file offset" means where the file starts.
-		// If it means content offset, add marker length.
-		// If it means entry offset, current offset is correct.
-		// I'll print entry offset (start of marker).
+	i := 0
+	for {
+		header, err := r.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading archive entry: %v\n", err)
+			os.Exit(1)
+		}
 
-		// Wait, user asked for "file offsets".
-		// In tar/zip, offset usually means offset of the header.
-		// I'll print the current offset (header start).
+		realSize, endsInNL, err := consumeAndCount(r, buf)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading archive content: %v\n", err)
+			os.Exit(1)
+		}
 
-		size := int64(len(f.Data))
+		size := realSize
+		if realSize > 0 && !endsInNL {
+			size++
+		}
 
-		fmt.Printf("%d %d %d %s\n", i, offset, size, f.Name)
+		fmt.Printf("%d %d %d %s\n", i, offset, size, header.Name)
 
+		marker := fmt.Sprintf("-- %s --\n", header.Name)
 		offset += int64(len(marker))
-		offset += int64(len(txtar.FixNL(f.Data)))
+		offset += size
+
+		i++
+	}
+}
+
+func consumeAndCount(r io.Reader, buf []byte) (int64, bool, error) {
+	var size int64
+	var lastByte byte
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			size += int64(n)
+			lastByte = buf[n-1]
+		}
+		if err == io.EOF {
+			// If size > 0, check if last byte was newline
+			return size, size > 0 && lastByte == '\n', nil
+		}
+		if err != nil {
+			return size, false, err
+		}
 	}
 }
 
