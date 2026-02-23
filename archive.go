@@ -57,10 +57,16 @@ type File struct {
 // and all a.File[i].Name is non-empty.
 func Format(a *Archive) []byte {
 	var buf bytes.Buffer
-	buf.Write(FixNL(a.Comment))
+	buf.Write(a.Comment)
+	if len(a.Comment) > 0 && a.Comment[len(a.Comment)-1] != '\n' {
+		buf.WriteByte('\n')
+	}
 	for _, f := range a.Files {
 		fmt.Fprintf(&buf, "-- %s --\n", f.Name)
-		buf.Write(FixNL(f.Data))
+		buf.Write(f.Data)
+		if len(f.Data) > 0 && f.Data[len(f.Data)-1] != '\n' {
+			buf.WriteByte('\n')
+		}
 	}
 	return buf.Bytes()
 }
