@@ -34,7 +34,9 @@ package txtar
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -86,11 +88,40 @@ func Format(a *Archive) []byte {
 
 // ParseFile parses the named file as an archive.
 func ParseFile(file string) (*Archive, error) {
-	data, err := os.ReadFile(file)
+	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
-	return Parse(data), nil
+	defer f.Close()
+
+	r := NewReader(f)
+	a := new(Archive)
+
+	// Read comment.
+	a.Comment, err = r.ReadComment()
+	if err != nil {
+		return nil, err
+	}
+	a.Comment = FixNL(a.Comment)
+
+	// Read files.
+	for {
+		header, err := r.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		data, err := io.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		header.Data = FixNL(data)
+		a.Files = append(a.Files, header)
+	}
+
+	return a, nil
 }
 
 // Parse parses the serialized form of an Archive.
@@ -121,13 +152,9 @@ func (a *Archive) SetComment(text string) {
 
 // Delete removes all files with the given name from the archive.
 func (a *Archive) Delete(name string) {
-	var kept []File
-	for _, f := range a.Files {
-		if f.Name != name {
-			kept = append(kept, f)
-		}
-	}
-	a.Files = kept
+	a.Files = slices.DeleteFunc(a.Files, func(f File) bool {
+		return f.Name == name
+	})
 }
 
 var (
