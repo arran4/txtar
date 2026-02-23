@@ -35,6 +35,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -107,13 +108,9 @@ func (a *Archive) SetComment(text string) {
 
 // Delete removes all files with the given name from the archive.
 func (a *Archive) Delete(name string) {
-	var kept []File
-	for _, f := range a.Files {
-		if f.Name != name {
-			kept = append(kept, f)
-		}
-	}
-	a.Files = kept
+	a.Files = slices.DeleteFunc(a.Files, func(f File) bool {
+		return f.Name == name
+	})
 }
 
 var (
