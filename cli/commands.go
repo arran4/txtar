@@ -22,7 +22,7 @@ import (
 func Create(recursive bool, trim bool, name string, depth int, files ...string) {
 	a := new(txtar.Archive)
 	for _, file := range files {
-		err := filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(file, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -33,22 +33,22 @@ func Create(recursive bool, trim bool, name string, depth int, files ...string) 
 			}
 
 			// Calculate depth
-			d := 0
+			depthCount := 0
 			if rel != "." {
-				d = strings.Count(rel, string(os.PathSeparator)) + 1
+				depthCount = strings.Count(rel, string(os.PathSeparator)) + 1
 			}
 
-			if info.IsDir() {
+			if d.IsDir() {
 				if !recursive && rel != "." {
 					return filepath.SkipDir
 				}
-				if depth >= 0 && d > depth {
+				if depth >= 0 && depthCount > depth {
 					return filepath.SkipDir
 				}
 				return nil
 			}
 
-			if depth >= 0 && d > depth {
+			if depth >= 0 && depthCount > depth {
 				return nil
 			}
 
