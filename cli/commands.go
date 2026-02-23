@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -248,49 +247,108 @@ func Delete(archive string, files ...string) {
 //	txt:		-t --txt		(default: false)	Extract/cat content of files inside archive
 //	files:		...				Files to extract (names in archive)
 func Cat(archive string, txt bool, files ...string) {
-    if !txt {
-        data, err := os.ReadFile(archive)
-        if err != nil {
-             fmt.Fprintf(os.Stderr, "Error reading archive: %v\n", err)
-             os.Exit(1)
-        }
-        fmt.Print(string(data))
-        return
-    }
+	if !txt {
+		f, err := os.Open(archive)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading archive: %v\n", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+		if _, err := io.Copy(os.Stdout, f); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
-	a, err := txtar.ParseFile(archive)
+	f, err := os.Open(archive)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error opening archive: %v\n", err)
 		os.Exit(1)
 	}
-    
-    fsys, _ := txtar.FS(a)
-    
-    if len(files) == 0 {
-        for _, f := range a.Files {
-             fmt.Print(string(f.Data))
-        }
-        return
-    }
+	defer f.Close()
 
-    for _, file := range files {
-        content, err := fs.ReadFile(fsys, file)
-        if err != nil {
-             found := false
-             for _, f := range a.Files {
-                 matched, _ := filepath.Match(file, f.Name)
-                 if matched {
-                     fmt.Print(string(f.Data))
-                     found = true
-                 }
-             }
-             if !found {
-                 fmt.Fprintf(os.Stderr, "File %s not found in archive\n", file)
-             }
-        } else {
-            fmt.Print(string(content))
-        }
-    }
+	r := txtar.NewReader(f)
+
+	if len(files) == 0 {
+		buf := make([]byte, 32*1024)
+		writer := struct{ io.Writer }{os.Stdout}
+		for {
+			_, err := r.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error reading archive: %v\n", err)
+				os.Exit(1)
+			}
+			if _, err := io.CopyBuffer(writer, r, buf); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		return
+	}
+
+	matches := make(map[int][][]byte)
+	exactMatches := make(map[int]bool)
+
+	for {
+		file, err := r.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading archive: %v\n", err)
+			os.Exit(1)
+		}
+
+		var data []byte
+		dataRead := false
+
+		for i, arg := range files {
+			if exactMatches[i] {
+				continue
+			}
+
+			if file.Name == arg {
+				if !dataRead {
+					data, err = io.ReadAll(r)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "Error reading file content: %v\n", err)
+						os.Exit(1)
+					}
+					dataRead = true
+				}
+				matches[i] = [][]byte{data}
+				exactMatches[i] = true
+				continue
+			}
+
+			matched, _ := filepath.Match(arg, file.Name)
+			if matched {
+				if !dataRead {
+					data, err = io.ReadAll(r)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "Error reading file content: %v\n", err)
+						os.Exit(1)
+					}
+					dataRead = true
+				}
+				matches[i] = append(matches[i], data)
+			}
+		}
+	}
+
+	for i, arg := range files {
+		if len(matches[i]) == 0 {
+			fmt.Fprintf(os.Stderr, "File %s not found in archive\n", arg)
+		} else {
+			for _, d := range matches[i] {
+				os.Stdout.Write(d)
+			}
+		}
+	}
 }
 
 // Comment is a subcommand `txtar comment` -- Show or set archive comment
