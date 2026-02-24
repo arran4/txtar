@@ -10,6 +10,7 @@ Subcommands:
 Flags:
     --recursive, -r   (default: false)   Recursive
     --trim, -t        (default: false)   Trim directory prefix
+    --follow, -f      (default: false)   Follow symlinks
     --name string                        Name filter glob pattern
     --depth, -1 int   (default: -1)      Max depth
 
