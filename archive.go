@@ -57,7 +57,21 @@ type File struct {
 // a.Comment and all a.File[i].Data contain no file marker lines,
 // and all a.File[i].Name is non-empty.
 func Format(a *Archive) []byte {
+	size := len(a.Comment)
+	if size > 0 && a.Comment[size-1] != '\n' {
+		size++
+	}
+	for _, f := range a.Files {
+		size += 3 + len(f.Name) + 4 // "-- " + f.Name + " --\n"
+		size += len(f.Data)
+		if len(f.Data) > 0 && f.Data[len(f.Data)-1] != '\n' {
+			size++
+		}
+	}
+
 	var buf bytes.Buffer
+	buf.Grow(size)
+
 	buf.Write(a.Comment)
 	if len(a.Comment) > 0 && a.Comment[len(a.Comment)-1] != '\n' {
 		buf.WriteByte('\n')

@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +22,7 @@ import (
 func Create(recursive bool, trim bool, follow bool, name string, depth int, files ...string) {
 	a := new(txtar.Archive)
 	for _, file := range files {
-		err := filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
+		err := filepath.WalkDir(file, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -34,16 +33,16 @@ func Create(recursive bool, trim bool, follow bool, name string, depth int, file
 			}
 
 			// Calculate depth
-			d := 0
+			depthCount := 0
 			if rel != "." {
-				d = strings.Count(rel, string(os.PathSeparator)) + 1
+				depthCount = strings.Count(rel, string(os.PathSeparator)) + 1
 			}
 
-			if info.IsDir() {
+			if d.IsDir() {
 				if !recursive && rel != "." {
 					return filepath.SkipDir
 				}
-				if depth >= 0 && d > depth {
+				if depth >= 0 && depthCount > depth {
 					return filepath.SkipDir
 				}
 				return nil
@@ -54,7 +53,7 @@ func Create(recursive bool, trim bool, follow bool, name string, depth int, file
 				return nil
 			}
 
-			if depth >= 0 && d > depth {
+			if depth >= 0 && depthCount > depth {
 				return nil
 			}
 
@@ -96,40 +95,75 @@ func Create(recursive bool, trim bool, follow bool, name string, depth int, file
 //
 //	archive:	@1	Archive file
 func List(archive string) {
-	a, err := txtar.ParseFile(archive)
+	f, err := os.Open(archive)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error opening archive: %v\n", err)
 		os.Exit(1)
 	}
+	defer f.Close()
+
+	r := txtar.NewReader(f)
 
 	// Calculate offsets
 	// Start with comment
-	offset := int64(len(txtar.FixNL(a.Comment)))
+	comment, err := r.ReadComment()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading archive comment: %v\n", err)
+		os.Exit(1)
+	}
+	offset := int64(len(txtar.FixNL(comment)))
 
-	for i, f := range a.Files {
-		marker := fmt.Sprintf("-- %s --\n", f.Name)
-		// Note: Format uses fixNL on data, so ensure we account for that.
-		// But marker line is exactly formatted.
-		// Wait, does Format add extra newlines or spacing?
-		// fmt.Fprintf(&buf, "-- %s --\n", f.Name)
-		// buf.Write(fixNL(f.Data))
+	// Reuse buffer for reading content
+	buf := make([]byte, 32*1024)
 
-		// So offset points to start of marker? Or start of file content?
-		// Usually "file offset" means where the file starts.
-		// If it means content offset, add marker length.
-		// If it means entry offset, current offset is correct.
-		// I'll print entry offset (start of marker).
+	i := 0
+	for {
+		header, err := r.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading archive entry: %v\n", err)
+			os.Exit(1)
+		}
 
-		// Wait, user asked for "file offsets".
-		// In tar/zip, offset usually means offset of the header.
-		// I'll print the current offset (header start).
+		realSize, endsInNL, err := consumeAndCount(r, buf)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading archive content: %v\n", err)
+			os.Exit(1)
+		}
 
-		size := int64(len(f.Data))
+		size := realSize
+		if realSize > 0 && !endsInNL {
+			size++
+		}
 
-		fmt.Printf("%d %d %d %s\n", i, offset, size, f.Name)
+		fmt.Printf("%d %d %d %s\n", i, offset, size, header.Name)
 
+		marker := fmt.Sprintf("-- %s --\n", header.Name)
 		offset += int64(len(marker))
-		offset += int64(len(txtar.FixNL(f.Data)))
+		offset += size
+
+		i++
+	}
+}
+
+func consumeAndCount(r io.Reader, buf []byte) (int64, bool, error) {
+	var size int64
+	var lastByte byte
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			size += int64(n)
+			lastByte = buf[n-1]
+		}
+		if err == io.EOF {
+			// If size > 0, check if last byte was newline
+			return size, size > 0 && lastByte == '\n', nil
+		}
+		if err != nil {
+			return size, false, err
+		}
 	}
 }
 
@@ -259,46 +293,84 @@ func Delete(archive string, files ...string) {
 //	files:		...				Files to extract (names in archive)
 func Cat(archive string, txt bool, files ...string) {
 	if !txt {
-		data, err := os.ReadFile(archive)
+		f, err := os.Open(archive)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reading archive: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Print(string(data))
+		defer f.Close()
+		if _, err := io.Copy(os.Stdout, f); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+			os.Exit(1)
+		}
 		return
 	}
 
-	a, err := txtar.ParseFile(archive)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
-		os.Exit(1)
-	}
-
-	fsys, _ := txtar.FS(a)
-
 	if len(files) == 0 {
-		for _, f := range a.Files {
-			fmt.Print(string(f.Data))
+		f, err := os.Open(archive)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+
+		r := txtar.NewReader(f)
+		for {
+			_, err := r.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+				os.Exit(1)
+			}
+			if _, err := io.Copy(os.Stdout, r); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+				os.Exit(1)
+			}
 		}
 		return
 	}
 
 	for _, file := range files {
-		content, err := fs.ReadFile(fsys, file)
-		if err != nil {
-			found := false
-			for _, f := range a.Files {
-				matched, _ := filepath.Match(file, f.Name)
+		found := false
+		err := func() error {
+			f, err := os.Open(archive)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			r := txtar.NewReader(f)
+			for {
+				hdr, err := r.Next()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					return err
+				}
+
+				matched, _ := filepath.Match(file, hdr.Name)
 				if matched {
-					fmt.Print(string(f.Data))
+					if _, err := io.Copy(os.Stdout, r); err != nil {
+						// Error writing to stdout, probably fatal
+						fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+						os.Exit(1)
+					}
 					found = true
 				}
 			}
-			if !found {
-				fmt.Fprintf(os.Stderr, "File %s not found in archive\n", file)
-			}
-		} else {
-			fmt.Print(string(content))
+			return nil
+		}()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+			os.Exit(1)
+		}
+
+		if !found {
+			fmt.Fprintf(os.Stderr, "File %s not found in archive\n", file)
 		}
 	}
 }
