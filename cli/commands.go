@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -282,46 +281,84 @@ func Delete(archive string, files ...string) {
 //	files:		...				Files to extract (names in archive)
 func Cat(archive string, txt bool, files ...string) {
 	if !txt {
-		data, err := os.ReadFile(archive)
+		f, err := os.Open(archive)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reading archive: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Print(string(data))
+		defer f.Close()
+		if _, err := io.Copy(os.Stdout, f); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+			os.Exit(1)
+		}
 		return
 	}
 
-	a, err := txtar.ParseFile(archive)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
-		os.Exit(1)
-	}
-
-	fsys, _ := txtar.FS(a)
-
 	if len(files) == 0 {
-		for _, f := range a.Files {
-			fmt.Print(string(f.Data))
+		f, err := os.Open(archive)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+
+		r := txtar.NewReader(f)
+		for {
+			_, err := r.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+				os.Exit(1)
+			}
+			if _, err := io.Copy(os.Stdout, r); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+				os.Exit(1)
+			}
 		}
 		return
 	}
 
 	for _, file := range files {
-		content, err := fs.ReadFile(fsys, file)
-		if err != nil {
-			found := false
-			for _, f := range a.Files {
-				matched, _ := filepath.Match(file, f.Name)
+		found := false
+		err := func() error {
+			f, err := os.Open(archive)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			r := txtar.NewReader(f)
+			for {
+				hdr, err := r.Next()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					return err
+				}
+
+				matched, _ := filepath.Match(file, hdr.Name)
 				if matched {
-					fmt.Print(string(f.Data))
+					if _, err := io.Copy(os.Stdout, r); err != nil {
+						// Error writing to stdout, probably fatal
+						fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
+						os.Exit(1)
+					}
 					found = true
 				}
 			}
-			if !found {
-				fmt.Fprintf(os.Stderr, "File %s not found in archive\n", file)
-			}
-		} else {
-			fmt.Print(string(content))
+			return nil
+		}()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+			os.Exit(1)
+		}
+
+		if !found {
+			fmt.Fprintf(os.Stderr, "File %s not found in archive\n", file)
 		}
 	}
 }
