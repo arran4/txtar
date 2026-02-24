@@ -336,3 +336,114 @@ func TestCat(t *testing.T) {
 		})
 	}
 }
+
+func TestComment(t *testing.T) {
+	// Helper to create a fresh archive for each test
+	setupArchive := func(t *testing.T) string {
+		t.Helper()
+		tmpDir := t.TempDir()
+		archivePath := filepath.Join(tmpDir, "test.txtar")
+		initialComment := "initial comment"
+		a := new(txtar.Archive)
+		a.Comment = []byte(initialComment)
+		data := txtar.Format(a)
+		if err := os.WriteFile(archivePath, data, 0644); err != nil {
+			t.Fatal(err)
+		}
+		return archivePath
+	}
+
+	// Case 1: Read existing comment
+	t.Run("ReadComment", func(t *testing.T) {
+		archivePath := setupArchive(t)
+
+		oldStdout := os.Stdout
+		r, w, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		os.Stdout = w
+		defer func() { os.Stdout = oldStdout }()
+
+		Comment("", "", archivePath)
+
+		w.Close()
+		out, _ := io.ReadAll(r)
+		got := string(out)
+
+		// txtar format adds a newline to the comment if missing during Format.
+		expected := "initial comment\n"
+		if got != expected {
+			t.Errorf("Expected output %q, got %q", expected, got)
+		}
+	})
+
+	// Case 2: Set comment from string
+	t.Run("SetCommentString", func(t *testing.T) {
+		archivePath := setupArchive(t)
+		newComment := "new comment from string"
+		Comment(newComment, "", archivePath)
+
+		// Verify archive content
+		readA, err := txtar.ParseFile(archivePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := newComment + "\n"
+		if string(readA.Comment) != expected {
+			t.Errorf("Expected comment %q, got %q", expected, string(readA.Comment))
+		}
+	})
+
+	// Case 3: Set comment from file
+	t.Run("SetCommentFile", func(t *testing.T) {
+		archivePath := setupArchive(t)
+		commentFile := filepath.Join(filepath.Dir(archivePath), "comment.txt")
+		fileComment := "comment from file"
+		if err := os.WriteFile(commentFile, []byte(fileComment), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		Comment("", commentFile, archivePath)
+
+		// Verify archive content
+		readA, err := txtar.ParseFile(archivePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := fileComment + "\n"
+		if string(readA.Comment) != expected {
+			t.Errorf("Expected comment %q, got %q", expected, string(readA.Comment))
+		}
+	})
+
+	// Case 4: Set comment from stdin
+	t.Run("SetCommentStdin", func(t *testing.T) {
+		archivePath := setupArchive(t)
+		stdinComment := "comment from stdin"
+		oldStdin := os.Stdin
+		r, w, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		os.Stdin = r
+		defer func() { os.Stdin = oldStdin }()
+
+		go func() {
+			w.Write([]byte(stdinComment))
+			w.Close()
+		}()
+
+		Comment("", "-", archivePath)
+
+		// Verify archive content
+		readA, err := txtar.ParseFile(archivePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := stdinComment + "\n"
+		if string(readA.Comment) != expected {
+			t.Errorf("Expected comment %q, got %q", expected, string(readA.Comment))
+		}
+	})
+}
