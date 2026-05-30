@@ -41,7 +41,7 @@ func BenchmarkCreate(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Run Create on the temp directory
-		// We use recursive=true, trim=false, glob="", depth=-1
-		Create(true, false, "", -1, tmpDir)
+		// We use recursive=true, trim=false, follow=false, glob="", depth=-1
+		Create(true, false, false, "", -1, tmpDir)
 	}
 }

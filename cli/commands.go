@@ -22,7 +22,7 @@ import (
 func Create(recursive bool, trim bool, follow bool, name string, depth int, files ...string) {
 	a := new(txtar.Archive)
 	for _, file := range files {
-		err := filepath.WalkDir(file, func(path string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(file, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -49,7 +49,7 @@ func Create(recursive bool, trim bool, follow bool, name string, depth int, file
 			}
 
 			// Skip symlinks to avoid including files outside the intended scope
-			if !follow && info.Mode()&os.ModeSymlink != 0 {
+			if !follow && d.Type()&os.ModeSymlink != 0 {
 				return nil
 			}
 

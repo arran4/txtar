@@ -249,7 +249,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestCat(t *testing.T) {
+func TestCatOld(t *testing.T) {
 	// Setup temporary directory
 	tmpDir := t.TempDir()
 	archivePath := filepath.Join(tmpDir, "test.txtar")
