@@ -188,7 +188,7 @@ func Add(recursive bool, follow bool, archive string, files ...string) {
 
 	for _, file := range files {
 		if recursive {
-			filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
+			_ = filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
