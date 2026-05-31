@@ -26,8 +26,8 @@ func BenchmarkListMemory(b *testing.B) {
 	// Write 1000 files -> ~10MB
 	for i := 0; i < 1000; i++ {
 		fmt.Fprintf(f, "-- file%d.txt --\n", i)
-		f.Write(chunk)
-		f.Write([]byte("\n"))
+		_, _ = f.Write(chunk)
+		_, _ = f.Write([]byte("\n"))
 	}
 	f.Close()
 

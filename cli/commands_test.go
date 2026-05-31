@@ -232,7 +232,7 @@ func TestCreate(t *testing.T) {
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			_, _ = io.Copy(&buf, r)
 			got := buf.String()
 
 			for _, w := range tt.want {
@@ -327,7 +327,7 @@ func TestCatOld(t *testing.T) {
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			_, _ = io.Copy(&buf, r)
 			got := buf.String()
 
 			if got != tt.want {
@@ -430,7 +430,7 @@ func TestComment(t *testing.T) {
 		defer func() { os.Stdin = oldStdin }()
 
 		go func() {
-			w.Write([]byte(stdinComment))
+			_, _ = w.Write([]byte(stdinComment))
 			w.Close()
 		}()
 

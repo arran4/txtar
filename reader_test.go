@@ -142,7 +142,7 @@ content`
 	}
 
 	var b bytes.Buffer
-	io.Copy(&b, r)
+	_, _ = io.Copy(&b, r)
 	if got := b.String(); got != "content" {
 		t.Errorf("got %q, want content", got)
 	}
@@ -164,7 +164,7 @@ content`
 	}
 
 	var b bytes.Buffer
-	io.Copy(&b, r)
+	_, _ = io.Copy(&b, r)
 	if got := b.String(); got != "content" {
 		t.Errorf("got %q, want content", got)
 	}
