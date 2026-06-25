@@ -61,7 +61,7 @@ content2
 
 			List(archivePath)
 
-			w.Close()
+			_ = w.Close()
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer

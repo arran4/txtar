@@ -13,7 +13,7 @@ func BenchmarkCreate(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Generate 1000 files in nested directories
 	for i := 0; i < 1000; i++ {
@@ -36,7 +36,7 @@ func BenchmarkCreate(b *testing.B) {
 		b.Fatal(err)
 	}
 	os.Stdout = f
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

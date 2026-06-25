@@ -74,7 +74,7 @@ func TestFileSystemReadWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 	if string(content) != "hello world" {
 		t.Errorf("FileSystem read 'hello world', got %q", content)
 	}
