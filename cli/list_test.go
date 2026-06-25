@@ -65,7 +65,7 @@ content2
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			_, _ = io.Copy(&buf, r)
 			got := buf.String()
 
 			for _, want := range tt.expected {

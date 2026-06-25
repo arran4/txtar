@@ -228,11 +228,11 @@ func TestCreate(t *testing.T) {
 
 			Create(tt.recursive, tt.trim, false, tt.glob, tt.depth, tt.files...)
 
-			w.Close()
+			_ = w.Close()
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			_, _ = io.Copy(&buf, r)
 			got := buf.String()
 
 			for _, w := range tt.want {
@@ -249,7 +249,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestCat(t *testing.T) {
+func TestCatOld(t *testing.T) {
 	// Setup temporary directory
 	tmpDir := t.TempDir()
 	archivePath := filepath.Join(tmpDir, "test.txtar")
@@ -323,11 +323,11 @@ func TestCat(t *testing.T) {
 
 			Cat(archivePath, true, tt.args...)
 
-			w.Close()
+			_ = w.Close()
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			_, _ = io.Copy(&buf, r)
 			got := buf.String()
 
 			if got != tt.want {
@@ -367,7 +367,7 @@ func TestComment(t *testing.T) {
 
 		Comment("", "", archivePath)
 
-		w.Close()
+		_ = w.Close()
 		out, _ := io.ReadAll(r)
 		got := string(out)
 
@@ -430,8 +430,8 @@ func TestComment(t *testing.T) {
 		defer func() { os.Stdin = oldStdin }()
 
 		go func() {
-			w.Write([]byte(stdinComment))
-			w.Close()
+			_, _ = w.Write([]byte(stdinComment))
+			_ = w.Close()
 		}()
 
 		Comment("", "-", archivePath)

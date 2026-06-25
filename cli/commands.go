@@ -22,7 +22,7 @@ import (
 func Create(recursive bool, trim bool, follow bool, name string, depth int, files ...string) {
 	a := new(txtar.Archive)
 	for _, file := range files {
-		err := filepath.WalkDir(file, func(path string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(file, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
@@ -49,7 +49,7 @@ func Create(recursive bool, trim bool, follow bool, name string, depth int, file
 			}
 
 			// Skip symlinks to avoid including files outside the intended scope
-			if !follow && info.Mode()&os.ModeSymlink != 0 {
+			if !follow && d.Type()&os.ModeSymlink != 0 {
 				return nil
 			}
 
@@ -100,7 +100,7 @@ func List(archive string) {
 		fmt.Fprintf(os.Stderr, "Error opening archive: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	r := txtar.NewReader(f)
 
@@ -188,7 +188,7 @@ func Add(recursive bool, follow bool, archive string, files ...string) {
 
 	for _, file := range files {
 		if recursive {
-			filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
+			_ = filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
@@ -298,7 +298,7 @@ func Cat(archive string, txt bool, files ...string) {
 			fmt.Fprintf(os.Stderr, "Error reading archive: %v\n", err)
 			os.Exit(1)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		if _, err := io.Copy(os.Stdout, f); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
 			os.Exit(1)
@@ -312,7 +312,7 @@ func Cat(archive string, txt bool, files ...string) {
 			fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
 			os.Exit(1)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		r := txtar.NewReader(f)
 		for {
@@ -339,7 +339,7 @@ func Cat(archive string, txt bool, files ...string) {
 			if err != nil {
 				return err
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			r := txtar.NewReader(f)
 			for {

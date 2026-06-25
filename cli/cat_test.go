@@ -26,19 +26,19 @@ func TestCat(t *testing.T) {
 
 		go func() {
 			var buf bytes.Buffer
-			io.Copy(&buf, rOut)
+			_, _ = io.Copy(&buf, rOut)
 			outC <- buf.String()
 		}()
 		go func() {
 			var buf bytes.Buffer
-			io.Copy(&buf, rErr)
+			_, _ = io.Copy(&buf, rErr)
 			errC <- buf.String()
 		}()
 
 		f()
 
-		wOut.Close()
-		wErr.Close()
+		_ = wOut.Close()
+		_ = wErr.Close()
 
 		os.Stdout = oldStdout
 		os.Stderr = oldStderr
@@ -46,8 +46,8 @@ func TestCat(t *testing.T) {
 		stdout := <-outC
 		stderr := <-errC
 
-		rOut.Close()
-		rErr.Close()
+		_ = rOut.Close()
+		_ = rErr.Close()
 
 		return stdout, stderr
 	}

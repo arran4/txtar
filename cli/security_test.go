@@ -45,7 +45,7 @@ func TestSymlinkVulnerability(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	// Check if the secret content is present in the output
@@ -140,7 +140,7 @@ func TestSymlinkFollowing(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	// Check if the content is present in the output

@@ -107,7 +107,7 @@ func TestRename(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.Write([]byte("content"))
+	_, _ = w.Write([]byte("content"))
 	w.Close()
 
 	if err := fsys.Rename("old.txt", "new.txt"); err != nil {
