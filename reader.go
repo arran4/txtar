@@ -115,9 +115,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 			switch err {
 			case nil:
 				r.atStartOfLine = true
-			case bufio.ErrBufferFull:
-				r.atStartOfLine = false
-			case io.EOF:
+			case bufio.ErrBufferFull, io.EOF:
 				r.atStartOfLine = false
 			}
 
