@@ -37,8 +37,8 @@ func TestCat(t *testing.T) {
 
 		f()
 
-		wOut.Close()
-		wErr.Close()
+		_ = wOut.Close()
+		_ = wErr.Close()
 
 		os.Stdout = oldStdout
 		os.Stderr = oldStderr
@@ -46,8 +46,8 @@ func TestCat(t *testing.T) {
 		stdout := <-outC
 		stderr := <-errC
 
-		rOut.Close()
-		rErr.Close()
+		_ = rOut.Close()
+		_ = rErr.Close()
 
 		return stdout, stderr
 	}

@@ -29,7 +29,7 @@ func BenchmarkListMemory(b *testing.B) {
 		_, _ = f.Write(chunk)
 		_, _ = f.Write([]byte("\n"))
 	}
-	f.Close()
+	_ = f.Close()
 
 	// Redirect stdout
 	oldStdout := os.Stdout
@@ -37,7 +37,7 @@ func BenchmarkListMemory(b *testing.B) {
 	os.Stdout = devNull
 	defer func() {
 		os.Stdout = oldStdout
-		devNull.Close()
+		_ = devNull.Close()
 	}()
 
 	b.ResetTimer()

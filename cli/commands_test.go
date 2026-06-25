@@ -228,7 +228,7 @@ func TestCreate(t *testing.T) {
 
 			Create(tt.recursive, tt.trim, false, tt.glob, tt.depth, tt.files...)
 
-			w.Close()
+			_ = w.Close()
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer
@@ -323,7 +323,7 @@ func TestCatOld(t *testing.T) {
 
 			Cat(archivePath, true, tt.args...)
 
-			w.Close()
+			_ = w.Close()
 			os.Stdout = oldStdout
 
 			var buf bytes.Buffer
@@ -367,7 +367,7 @@ func TestComment(t *testing.T) {
 
 		Comment("", "", archivePath)
 
-		w.Close()
+		_ = w.Close()
 		out, _ := io.ReadAll(r)
 		got := string(out)
 
@@ -431,7 +431,7 @@ func TestComment(t *testing.T) {
 
 		go func() {
 			_, _ = w.Write([]byte(stdinComment))
-			w.Close()
+			_ = w.Close()
 		}()
 
 		Comment("", "-", archivePath)

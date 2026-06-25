@@ -100,7 +100,7 @@ func List(archive string) {
 		fmt.Fprintf(os.Stderr, "Error opening archive: %v\n", err)
 		os.Exit(1)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	r := txtar.NewReader(f)
 
@@ -298,7 +298,7 @@ func Cat(archive string, txt bool, files ...string) {
 			fmt.Fprintf(os.Stderr, "Error reading archive: %v\n", err)
 			os.Exit(1)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		if _, err := io.Copy(os.Stdout, f); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing to stdout: %v\n", err)
 			os.Exit(1)
@@ -312,7 +312,7 @@ func Cat(archive string, txt bool, files ...string) {
 			fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
 			os.Exit(1)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		r := txtar.NewReader(f)
 		for {
@@ -339,7 +339,7 @@ func Cat(archive string, txt bool, files ...string) {
 			if err != nil {
 				return err
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			r := txtar.NewReader(f)
 			for {
