@@ -16,7 +16,7 @@ func BenchmarkListMemory(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	fmt.Fprintln(f, "This is a large archive for testing memory usage.")
+	_, _ = fmt.Fprintln(f, "This is a large archive for testing memory usage.")
 
 	chunk := make([]byte, 10240) // 10KB
 	for i := range chunk {
@@ -25,7 +25,7 @@ func BenchmarkListMemory(b *testing.B) {
 
 	// Write 1000 files -> ~10MB
 	for i := 0; i < 1000; i++ {
-		fmt.Fprintf(f, "-- file%d.txt --\n", i)
+		_, _ = fmt.Fprintf(f, "-- file%d.txt --\n", i)
 		_, _ = f.Write(chunk)
 		_, _ = f.Write([]byte("\n"))
 	}

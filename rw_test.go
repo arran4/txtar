@@ -74,7 +74,7 @@ func TestFileSystemReadWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 	if string(content) != "hello world" {
 		t.Errorf("FileSystem read 'hello world', got %q", content)
 	}
@@ -108,7 +108,7 @@ func TestRename(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _ = w.Write([]byte("content"))
-	w.Close()
+	_ = w.Close()
 
 	if err := fsys.Rename("old.txt", "new.txt"); err != nil {
 		t.Fatal(err)

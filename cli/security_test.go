@@ -41,7 +41,7 @@ func TestSymlinkVulnerability(t *testing.T) {
 	// recursive=true, trim=false, follow=false, name="", depth=-1, files=[targetDir]
 	Create(true, false, false, "", -1, targetDir)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
@@ -136,7 +136,7 @@ func TestSymlinkFollowing(t *testing.T) {
 	// recursive=true, trim=false, follow=true, name="", depth=-1, files=[archiveDir]
 	Create(true, false, true, "", -1, archiveDir)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer

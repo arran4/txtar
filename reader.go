@@ -112,11 +112,10 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 			// Copy to pending.
 			r.pending = append([]byte(nil), line...)
 
-			if err == nil {
+			switch err {
+			case nil:
 				r.atStartOfLine = true
-			} else if err == bufio.ErrBufferFull {
-				r.atStartOfLine = false
-			} else if err == io.EOF {
+			case bufio.ErrBufferFull, io.EOF:
 				r.atStartOfLine = false
 			}
 
@@ -139,12 +138,13 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 			r.pending = append([]byte(nil), line[n:]...)
 		}
 
-		if err == nil {
+		switch err {
+		case nil:
 			r.atStartOfLine = true
-		} else if err == bufio.ErrBufferFull {
+		case bufio.ErrBufferFull:
 			r.atStartOfLine = false
 			err = nil // Hide BufferFull
-		} else if err == io.EOF {
+		case io.EOF:
 			r.atStartOfLine = false
 			if len(r.pending) > 0 {
 				err = nil

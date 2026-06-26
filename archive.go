@@ -194,7 +194,7 @@ func isMarker(data []byte) (name string, after []byte) {
 			data = data[:i-1]
 		}
 	}
-	if !(bytes.HasSuffix(data, markerEnd) && len(data) >= len(marker)+len(markerEnd)) {
+	if !bytes.HasSuffix(data, markerEnd) || len(data) < len(marker)+len(markerEnd) {
 		return "", nil
 	}
 	return strings.TrimSpace(string(data[len(marker) : len(data)-len(markerEnd)])), after
