@@ -78,6 +78,11 @@ func (c *RootCmd) UsageRecursive() {
 	fmt.Fprintf(os.Stderr, "    %s\n", "create")
 	fmt.Fprintf(os.Stderr, "    %s\n", "delete")
 	fmt.Fprintf(os.Stderr, "    %s\n", "list")
+	fmt.Fprintf(os.Stderr, "    %s\n", "skill-inspect")
+	fmt.Fprintf(os.Stderr, "    %s\n", "skill-install")
+	fmt.Fprintf(os.Stderr, "    %s\n", "skill-list")
+	fmt.Fprintf(os.Stderr, "    %s\n", "skill-remove")
+	fmt.Fprintf(os.Stderr, "    %s\n", "skill-update")
 }
 
 func NewRoot(name, version, commit, date string) (*RootCmd, error) {
@@ -97,6 +102,11 @@ func NewRoot(name, version, commit, date string) (*RootCmd, error) {
 	c.Commands["create"] = c.NewCreate()
 	c.Commands["delete"] = c.NewDelete()
 	c.Commands["list"] = c.NewList()
+	c.Commands["skill-inspect"] = c.NewSkillInspect()
+	c.Commands["skill-install"] = c.NewSkillInstall()
+	c.Commands["skill-list"] = c.NewSkillList()
+	c.Commands["skill-remove"] = c.NewSkillRemove()
+	c.Commands["skill-update"] = c.NewSkillUpdate()
 	c.Commands["help"] = &InternalCommand{
 		Exec: func(args []string) error {
 			for _, arg := range args {
