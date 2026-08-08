@@ -439,9 +439,13 @@ func Extract(dir string, archive string, files ...string) {
 		os.Exit(1)
 	}
 
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
-		os.Exit(1)
+	if dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			if !os.IsExist(err) {
+				fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	for _, f := range a.Files {
