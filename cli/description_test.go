@@ -28,7 +28,7 @@ func TestDescription(t *testing.T) {
 
 		Description(false, false, "", archivePath)
 
-		w.Close()
+		_ = w.Close()
 		os.Stdout = oldStdout
 
 		var buf bytes.Buffer
@@ -42,7 +42,7 @@ func TestDescription(t *testing.T) {
 
 	t.Run("Replace", func(t *testing.T) {
 		tempFile := filepath.Join(t.TempDir(), "replace.txtar")
-		os.WriteFile(tempFile, txtar.Format(a), 0644)
+		_ = os.WriteFile(tempFile, txtar.Format(a), 0644)
 
 		Description(true, false, "", tempFile, "new line 1", "new line 2")
 
@@ -58,7 +58,7 @@ func TestDescription(t *testing.T) {
 
 	t.Run("Append", func(t *testing.T) {
 		tempFile := filepath.Join(t.TempDir(), "append.txtar")
-		os.WriteFile(tempFile, txtar.Format(a), 0644)
+		_ = os.WriteFile(tempFile, txtar.Format(a), 0644)
 
 		Description(false, true, "", tempFile, "line 4")
 
@@ -74,7 +74,7 @@ func TestDescription(t *testing.T) {
 
 	t.Run("Edit", func(t *testing.T) {
 		tempFile := filepath.Join(t.TempDir(), "edit.txtar")
-		os.WriteFile(tempFile, txtar.Format(a), 0644)
+		_ = os.WriteFile(tempFile, txtar.Format(a), 0644)
 
 		Description(false, false, "2-2", tempFile, "new line 2")
 
@@ -90,7 +90,7 @@ func TestDescription(t *testing.T) {
 
 	t.Run("EditMultipleLines", func(t *testing.T) {
 		tempFile := filepath.Join(t.TempDir(), "edit2.txtar")
-		os.WriteFile(tempFile, txtar.Format(a), 0644)
+		_ = os.WriteFile(tempFile, txtar.Format(a), 0644)
 
 		Description(false, false, "1-2", tempFile, "replaced lines 1 and 2")
 
