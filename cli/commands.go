@@ -511,14 +511,14 @@ func Description(replace bool, appendDesc bool, edit string, archive string, tex
 func descriptionWithFS(fsys clifs.FS, replace bool, appendDesc bool, edit string, archive string, text ...string) {
 	a, err := txtar.ParseFile(archive)
 	if err != nil {
-		fmt.Fprintf(fsys.Stderr(), "Error parsing archive: %v\n", err)
+		_, _ = fmt.Fprintf(fsys.Stderr(), "Error parsing archive: %v\n", err)
 		os.Exit(1)
 	}
 
 	inputText := strings.Join(text, " ")
 
 	if !replace && !appendDesc && edit == "" {
-		fmt.Fprint(fsys.Stdout(), string(a.Comment))
+		_, _ = fmt.Fprint(fsys.Stdout(), string(a.Comment))
 		return
 	}
 
@@ -539,22 +539,22 @@ func descriptionWithFS(fsys clifs.FS, replace bool, appendDesc bool, edit string
 	} else if edit != "" {
 		parts := strings.Split(edit, "-")
 		if len(parts) != 2 {
-			fmt.Fprintf(fsys.Stderr(), "Invalid edit format, expected <start>-<end>\n")
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Invalid edit format, expected <start>-<end>\n")
 			os.Exit(1)
 		}
 
 		var start, end int
 		if _, err := fmt.Sscanf(parts[0], "%d", &start); err != nil {
-			fmt.Fprintf(fsys.Stderr(), "Invalid start line number\n")
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Invalid start line number\n")
 			os.Exit(1)
 		}
 		if _, err := fmt.Sscanf(parts[1], "%d", &end); err != nil {
-			fmt.Fprintf(fsys.Stderr(), "Invalid end line number\n")
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Invalid end line number\n")
 			os.Exit(1)
 		}
 
 		if start < 1 || end < start {
-			fmt.Fprintf(fsys.Stderr(), "Invalid line numbers\n")
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Invalid line numbers\n")
 			os.Exit(1)
 		}
 
@@ -580,7 +580,7 @@ func descriptionWithFS(fsys clifs.FS, replace bool, appendDesc bool, edit string
 	}
 
 	if err := fsys.WriteFile(archive, txtar.Format(a), 0644); err != nil {
-		fmt.Fprintf(fsys.Stderr(), "Error writing archive: %v\n", err)
+		_, _ = fmt.Fprintf(fsys.Stderr(), "Error writing archive: %v\n", err)
 		os.Exit(1)
 	}
 }
