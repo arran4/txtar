@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"txtar/cli"
 )
@@ -16,6 +17,7 @@ var _ Cmd = (*Extract)(nil)
 type Extract struct {
 	*RootCmd
 	Flags         *flag.FlagSet
+	verbose       bool
 	dir           string
 	archive       string
 	files         []string
@@ -68,6 +70,17 @@ func (c *Extract) Execute(args []string) error {
 			_ = hasValue
 			switch name {
 
+			case "verbose":
+				if hasValue {
+					b, err := strconv.ParseBool(value)
+					if err != nil {
+						return fmt.Errorf("invalid boolean value for flag %s: %s", name, value)
+					}
+					c.verbose = b
+				} else {
+					c.verbose = true
+				}
+
 			case "dir":
 				if !hasValue {
 					if i+1 < len(args) {
@@ -91,6 +104,11 @@ func (c *Extract) Execute(args []string) error {
 					return nil
 				}
 				found := false
+
+				if char == "v" {
+					found = true
+					c.verbose = true
+				}
 
 				if char == "d" {
 					found = true
@@ -170,13 +188,16 @@ func (c *RootCmd) NewExtract() *Extract {
 		SubCommands: make(map[string]func() Cmd),
 	}
 
+	set.BoolVar(&v.verbose, "verbose", false, "Verbose output")
+	set.BoolVar(&v.verbose, "v", false, "Verbose output")
+
 	set.StringVar(&v.dir, "dir", ".", "Output directory")
 	set.StringVar(&v.dir, "d", ".", "Output directory")
 	set.Usage = v.Usage
 
 	v.CommandAction = func(c *Extract) error {
 
-		cli.Extract(c.dir, c.archive, c.files...)
+		cli.Extract(c.verbose, c.dir, c.archive, c.files...)
 		return nil
 	}
 

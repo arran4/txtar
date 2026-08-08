@@ -9,6 +9,12 @@ import (
 	"txtar"
 )
 
+
+var (
+	osMkdirAll  = os.MkdirAll
+	osWriteFile = os.WriteFile
+)
+
 // Create is a subcommand `txtar create` -- Create a new archive
 //
 // Flags:
@@ -429,10 +435,11 @@ func Comment(comment string, file string, archive string) {
 //
 // Flags:
 //
+//	verbose:	-v --verbose	(default: false)	Verbose output
 //	dir:		-d --dir		(default: ".")	Output directory
 //	archive:	@1				Archive file
 //	files:		...				Files to extract (names or glob patterns)
-func Extract(dir string, archive string, files ...string) {
+func Extract(verbose bool, dir string, archive string, files ...string) {
 	a, err := txtar.ParseFile(archive)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
@@ -440,7 +447,7 @@ func Extract(dir string, archive string, files ...string) {
 	}
 
 	if dir != "." && dir != "" {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := osMkdirAll(dir, 0755); err != nil {
 			if !os.IsExist(err) {
 				fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
 				os.Exit(1)
@@ -471,12 +478,15 @@ func Extract(dir string, archive string, files ...string) {
 			outPath := filepath.Join(dir, f.Name)
 			outDir := filepath.Dir(outPath)
 
-			if err := os.MkdirAll(outDir, 0755); err != nil {
+			if err := osMkdirAll(outDir, 0755); err != nil {
 				fmt.Fprintf(os.Stderr, "Error creating directory for %s: %v\n", f.Name, err)
 				os.Exit(1)
 			}
 
-			if err := os.WriteFile(outPath, f.Data, 0644); err != nil {
+			if verbose {
+				fmt.Printf("Extracting %s\n", f.Name)
+			}
+			if err := osWriteFile(outPath, f.Data, 0644); err != nil {
 				fmt.Fprintf(os.Stderr, "Error writing file %s: %v\n", f.Name, err)
 				os.Exit(1)
 			}

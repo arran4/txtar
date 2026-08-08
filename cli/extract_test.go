@@ -11,7 +11,27 @@ import (
 )
 
 func TestExtract(t *testing.T) {
-	t.Skip("Skipping test to avoid actual file system activity as per PR feedback")
+	// Inject DI
+	mockFS := make(map[string][]byte)
+	mockDirs := make(map[string]bool)
+
+	oldMkdirAll := osMkdirAll
+	oldWriteFile := osWriteFile
+
+	osMkdirAll = func(path string, perm os.FileMode) error {
+		mockDirs[path] = true
+		return nil
+	}
+	osWriteFile = func(name string, data []byte, perm os.FileMode) error {
+		mockFS[name] = data
+		return nil
+	}
+
+	defer func() {
+		osMkdirAll = oldMkdirAll
+		osWriteFile = oldWriteFile
+	}()
+
 	// Setup temporary directory
 	tmpDir := t.TempDir()
 	archivePath := filepath.Join(tmpDir, "test.txtar")
@@ -62,11 +82,9 @@ func TestExtract(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Clear out directory
-			_ = os.RemoveAll(outDir)
-			if err := os.MkdirAll(outDir, 0755); err != nil {
-				t.Fatal(err)
-			}
+			// Clear mock state
+			mockFS = make(map[string][]byte)
+			mockDirs = make(map[string]bool)
 
 			// Capture stdout and stderr
 			oldStdout := os.Stdout
@@ -75,17 +93,16 @@ func TestExtract(t *testing.T) {
 			os.Stdout = w
 			os.Stderr = w
 
-			Extract(outDir, archivePath, tt.args...)
+			Extract(false, outDir, archivePath, tt.args...)
 
 			_ = w.Close()
 			os.Stdout = oldStdout
 			os.Stderr = oldStderr
 
-
 			for _, w := range tt.want {
-				content, err := os.ReadFile(filepath.Join(outDir, w))
-				if err != nil {
-					t.Errorf("Expected file %s to be extracted, but got error: %v", w, err)
+				content, ok := mockFS[filepath.Join(outDir, w)]
+				if !ok {
+					t.Errorf("Expected file %s to be extracted, but it was not", w)
 				} else {
 					var expectedContent string
 					for _, f := range a.Files {
@@ -100,7 +117,7 @@ func TestExtract(t *testing.T) {
 				}
 			}
 			for _, nw := range tt.notWant {
-				if _, err := os.Stat(filepath.Join(outDir, nw)); err == nil {
+				if _, ok := mockFS[filepath.Join(outDir, nw)]; ok {
 					t.Errorf("Expected file %s to NOT be extracted, but it was", nw)
 				}
 			}
@@ -109,6 +126,10 @@ func TestExtract(t *testing.T) {
 
 	// Security test: prevent path traversal
 	t.Run("path traversal", func(t *testing.T) {
+		// Clear mock state
+		mockFS = make(map[string][]byte)
+		mockDirs = make(map[string]bool)
+
 		a := new(txtar.Archive)
 		a.Files = []txtar.File{
 			{Name: "../outside.txt", Data: []byte("content\n")},
@@ -119,9 +140,6 @@ func TestExtract(t *testing.T) {
 
 		secArchivePath := filepath.Join(tmpDir, "sec.txtar")
 		secOutDir := filepath.Join(tmpDir, "sec-out")
-		if err := os.MkdirAll(secOutDir, 0755); err != nil {
-			t.Fatal(err)
-		}
 
 		data := txtar.Format(a)
 		if err := os.WriteFile(secArchivePath, data, 0644); err != nil {
@@ -135,7 +153,7 @@ func TestExtract(t *testing.T) {
 		os.Stdout = w
 		os.Stderr = w
 
-		Extract(secOutDir, secArchivePath)
+		Extract(false, secOutDir, secArchivePath)
 
 		_ = w.Close()
 		os.Stdout = oldStdout
@@ -157,18 +175,16 @@ func TestExtract(t *testing.T) {
 		}
 
 		// Ensure safe file was extracted
-		if _, err := os.Stat(filepath.Join(secOutDir, "safe.txt")); err != nil {
-			t.Errorf("Expected safe.txt to be extracted, got error: %v", err)
+		if _, ok := mockFS[filepath.Join(secOutDir, "safe.txt")]; !ok {
+			t.Errorf("Expected safe.txt to be extracted")
 		}
 
 		// Ensure unsafe files were not extracted
-		if _, err := os.Stat(filepath.Join(secOutDir, "../outside.txt")); err == nil {
+		if _, ok := mockFS[filepath.Join(secOutDir, "../outside.txt")]; ok {
 			t.Errorf("Unsafe file ../outside.txt was extracted")
 		}
-		if _, err := os.Stat("/absolute.txt"); err == nil {
+		if _, ok := mockFS["/absolute.txt"]; ok {
 			t.Errorf("Unsafe file /absolute.txt was extracted")
-			// Clean up if it was actually created
-			_ = os.Remove("/absolute.txt")
 		}
 	})
 }

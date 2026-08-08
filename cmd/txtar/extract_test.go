@@ -22,6 +22,7 @@ func TestExtract_Execute(t *testing.T) {
 	}
 
 	args := []string{}
+	args = append(args, "--verbose")
 	args = append(args, "--dir")
 	args = append(args, "test")
 	args = append(args, "test")
@@ -35,6 +36,9 @@ func TestExtract_Execute(t *testing.T) {
 		t.Error("CommandAction was not called")
 	}
 
+	if cmd.verbose != true {
+		t.Errorf("Expected verbose to be true, got '%v'", cmd.verbose)
+	}
 	if cmd.dir != "test" {
 		t.Errorf("Expected dir to be 'test', got '%v'", cmd.dir)
 	}

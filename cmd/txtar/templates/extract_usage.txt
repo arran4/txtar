@@ -9,7 +9,8 @@ Subcommands:
 
 
 Flags:
-    --dir, -d string   (default: ".")   Output directory
+    --verbose, -v      (default: false)   Verbose output
+    --dir, -d string   (default: ".")     Output directory
 
 Positional Arguments:
     <archive>  Archive file
