@@ -424,3 +424,58 @@ func Comment(comment string, file string, archive string) {
 		os.Exit(1)
 	}
 }
+
+// Extract is a subcommand `txtar extract` -- Extract files from an archive
+//
+// Flags:
+//
+//	dir:		-d --dir		(default: ".")	Output directory
+//	archive:	@1				Archive file
+//	files:		...				Files to extract (names or glob patterns)
+func Extract(dir string, archive string, files ...string) {
+	a, err := txtar.ParseFile(archive)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, f := range a.Files {
+		// Security: prevent path traversal
+		if strings.HasPrefix(f.Name, "/") || strings.HasPrefix(f.Name, "../") || strings.Contains(f.Name, "/../") {
+			fmt.Fprintf(os.Stderr, "Warning: skipping file with unsafe path: %s\n", f.Name)
+			continue
+		}
+
+		// Check if we should extract this file
+		extract := len(files) == 0
+		if !extract {
+			for _, pattern := range files {
+				matched, _ := filepath.Match(pattern, f.Name)
+				if matched {
+					extract = true
+					break
+				}
+			}
+		}
+
+		if extract {
+			outPath := filepath.Join(dir, f.Name)
+			outDir := filepath.Dir(outPath)
+
+			if err := os.MkdirAll(outDir, 0755); err != nil {
+				fmt.Fprintf(os.Stderr, "Error creating directory for %s: %v\n", f.Name, err)
+				os.Exit(1)
+			}
+
+			if err := os.WriteFile(outPath, f.Data, 0644); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing file %s: %v\n", f.Name, err)
+				os.Exit(1)
+			}
+		}
+	}
+}

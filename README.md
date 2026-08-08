@@ -41,6 +41,21 @@ List files in an archive.
 txtar list archive.txtar
 ```
 
+### Extract
+
+Extract files from an archive to a specified directory.
+
+```bash
+# Extract all files to current directory
+txtar extract archive.txtar
+
+# Extract specific files to a directory
+txtar extract -d ./output archive.txtar file1 file2
+```
+
+Flags:
+- `-d, --dir`: Output directory (default: ".")
+
 ### Add / Append
 
 Add files to an existing archive.

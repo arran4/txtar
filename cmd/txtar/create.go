@@ -6,9 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
-
 	"txtar/cli"
 )
 
@@ -23,7 +23,7 @@ type Create struct {
 	name          string
 	depth         int
 	files         []string
-	SubCommands   map[string]Cmd
+	SubCommands   map[string]func() Cmd
 	CommandAction func(c *Create) error
 }
 
@@ -47,11 +47,6 @@ func (c *Create) UsageRecursive() {
 }
 
 func (c *Create) Execute(args []string) error {
-	if len(args) > 0 {
-		if cmd, ok := c.SubCommands[args[0]]; ok {
-			return cmd.Execute(args[1:])
-		}
-	}
 	var remainingArgs []string
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -59,20 +54,25 @@ func (c *Create) Execute(args []string) error {
 			remainingArgs = append(remainingArgs, args[i+1:]...)
 			break
 		}
-		if strings.HasPrefix(arg, "-") && arg != "-" {
-			name := arg
+		if strings.HasPrefix(arg, "--") {
+			if arg == "--help" {
+				c.Usage()
+				return nil
+			}
+			name := arg[2:]
 			value := ""
 			hasValue := false
-			if strings.Contains(arg, "=") {
-				parts := strings.SplitN(arg, "=", 2)
+			if strings.Contains(name, "=") {
+				parts := strings.SplitN(name, "=", 2)
 				name = parts[0]
 				value = parts[1]
 				hasValue = true
 			}
-			trimmedName := strings.TrimLeft(name, "-")
-			switch trimmedName {
+			_ = value
+			_ = hasValue
+			switch name {
 
-			case "recursive", "r":
+			case "recursive":
 				if hasValue {
 					b, err := strconv.ParseBool(value)
 					if err != nil {
@@ -83,7 +83,7 @@ func (c *Create) Execute(args []string) error {
 					c.recursive = true
 				}
 
-			case "trim", "t":
+			case "trim":
 				if hasValue {
 					b, err := strconv.ParseBool(value)
 					if err != nil {
@@ -94,7 +94,7 @@ func (c *Create) Execute(args []string) error {
 					c.trim = true
 				}
 
-			case "follow", "f":
+			case "follow":
 				if hasValue {
 					b, err := strconv.ParseBool(value)
 					if err != nil {
@@ -116,7 +116,7 @@ func (c *Create) Execute(args []string) error {
 				}
 				c.name = value
 
-			case "depth", "1":
+			case "depth":
 				if !hasValue {
 					if i+1 < len(args) {
 						value = args[i+1]
@@ -125,19 +125,53 @@ func (c *Create) Execute(args []string) error {
 						return fmt.Errorf("flag %s requires a value", name)
 					}
 				}
-				iv, err := strconv.Atoi(value)
+				v, err := strconv.Atoi(value)
 				if err != nil {
 					return fmt.Errorf("invalid integer value for flag %s: %s", name, value)
 				}
-				c.depth = iv
-			case "help", "h":
-				c.Usage()
-				return nil
+				c.depth = v
 			default:
-				return fmt.Errorf("unknown flag: %s", name)
+				return fmt.Errorf("unknown flag: --%s", name)
+			}
+		} else if strings.HasPrefix(arg, "-") && arg != "-" {
+			// Short flags
+			shorts := arg[1:]
+			for j := 0; j < len(shorts); j++ {
+				char := string(shorts[j])
+				if char == "h" {
+					c.Usage()
+					return nil
+				}
+				found := false
+
+				if char == "r" {
+					found = true
+					c.recursive = true
+				}
+
+				if char == "t" {
+					found = true
+					c.trim = true
+				}
+
+				if char == "f" {
+					found = true
+					c.follow = true
+				}
+
+				if !found {
+					return fmt.Errorf("unknown flag: -%s", char)
+				}
 			}
 		} else {
-			remainingArgs = append(remainingArgs, arg)
+			remainingArgs = append(remainingArgs, args[i:]...)
+			break
+		}
+	}
+
+	if len(remainingArgs) > 0 {
+		if cmd, ok := c.SubCommands[remainingArgs[0]]; ok {
+			return cmd().Execute(remainingArgs[1:])
 		}
 	}
 	// Handle vararg files
@@ -166,7 +200,7 @@ func (c *RootCmd) NewCreate() *Create {
 	v := &Create{
 		RootCmd:     c,
 		Flags:       set,
-		SubCommands: make(map[string]Cmd),
+		SubCommands: make(map[string]func() Cmd),
 	}
 
 	set.BoolVar(&v.recursive, "recursive", false, "Recursive")
@@ -178,10 +212,9 @@ func (c *RootCmd) NewCreate() *Create {
 	set.BoolVar(&v.follow, "follow", false, "Follow symlinks")
 	set.BoolVar(&v.follow, "f", false, "Follow symlinks")
 
-	set.StringVar(&v.name, "name", "", "Name filter glob pattern")
+	set.StringVar(&v.name, "name", "", "Name filter (glob pattern)")
 
 	set.IntVar(&v.depth, "depth", -1, "Max depth")
-	set.IntVar(&v.depth, "1", -1, "Max depth")
 	set.Usage = v.Usage
 
 	v.CommandAction = func(c *Create) error {
@@ -190,31 +223,31 @@ func (c *RootCmd) NewCreate() *Create {
 		return nil
 	}
 
-	v.SubCommands["help"] = &InternalCommand{
-		Exec: func(args []string) error {
-			for _, arg := range args {
-				if arg == "-deep" {
+	v.SubCommands["help"] = func() Cmd {
+		return &InternalCommand{
+			Exec: func(args []string) error {
+				if slices.Contains(args, "-deep") {
 					v.UsageRecursive()
 					return nil
 				}
-			}
-			v.Usage()
-			return nil
-		},
-		UsageFunc: v.Usage,
+				v.Usage()
+				return nil
+			},
+			UsageFunc: v.Usage,
+		}
 	}
-	v.SubCommands["usage"] = &InternalCommand{
-		Exec: func(args []string) error {
-			for _, arg := range args {
-				if arg == "-deep" {
+	v.SubCommands["usage"] = func() Cmd {
+		return &InternalCommand{
+			Exec: func(args []string) error {
+				if slices.Contains(args, "-deep") {
 					v.UsageRecursive()
 					return nil
 				}
-			}
-			v.Usage()
-			return nil
-		},
-		UsageFunc: v.Usage,
+				v.Usage()
+				return nil
+			},
+			UsageFunc: v.Usage,
+		}
 	}
 	return v
 }
