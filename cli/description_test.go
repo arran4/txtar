@@ -2,11 +2,27 @@ package cli
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 	"txtar"
 )
+
+func runDescriptionWithOutput(replace bool, appendDesc bool, edit string, archive string, text ...string) string {
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	Description(replace, appendDesc, edit, archive, text...)
+
+	_ = w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	return buf.String()
+}
 
 func TestDescription(t *testing.T) {
 	tempDir := t.TempDir()
@@ -22,21 +38,11 @@ func TestDescription(t *testing.T) {
 	}
 
 	t.Run("Show", func(t *testing.T) {
-		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-
-		Description(false, false, "", archivePath)
-
-		_ = w.Close()
-		os.Stdout = oldStdout
-
-		var buf bytes.Buffer
-		_, _ = buf.ReadFrom(r)
+		output := runDescriptionWithOutput(false, false, "", archivePath)
 
 		expected := "line 1\nline 2\nline 3\n"
-		if buf.String() != expected {
-			t.Errorf("Expected %q, got %q", expected, buf.String())
+		if output != expected {
+			t.Errorf("Expected %q, got %q", expected, output)
 		}
 	})
 
