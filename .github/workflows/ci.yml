@@ -413,7 +413,7 @@ jobs:
           go-version: "1.24"
       - name: Tag commit for release (workflow_dispatch)
         if: ${{ github.event_name == 'workflow_dispatch' && startsWith(inputs.mode, 'release-') }}
-        run: git tag ${{ needs.prepare-release-tag.outputs.release_tag }}
+        run: git tag --force ${{ needs.prepare-release-tag.outputs.release_tag }}
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -476,7 +476,7 @@ jobs:
           TAG: ${{ needs.prepare-release-tag.outputs.release_tag }}
         run: |
           set -euo pipefail
-          git tag "$TAG"
+          git tag --force "$TAG"
           git push origin "$TAG" || { sleep 2; git push origin "$TAG"; }
       - name: Create release with generated notes + discussion
         env:
