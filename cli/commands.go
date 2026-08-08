@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"txtar"
+	"txtar/internal/clifs"
 )
 
 
@@ -427,21 +428,6 @@ func Comment(comment string, file string, archive string) {
 }
 
 
-type ExtractorFS interface {
-	MkdirAll(path string, perm os.FileMode) error
-	WriteFile(name string, data []byte, perm os.FileMode) error
-}
-
-type osFS struct{}
-
-func (osFS) MkdirAll(path string, perm os.FileMode) error {
-	return os.MkdirAll(path, perm)
-}
-
-func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
-	return os.WriteFile(name, data, perm)
-}
-
 // Extract is a subcommand `txtar extract` -- Extract files from an archive
 //
 // Flags:
@@ -451,20 +437,20 @@ func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 //	archive:	@1				Archive file
 //	files:		...				Files to extract (names or glob patterns)
 func Extract(verbose bool, dir string, archive string, files ...string) {
-	extractWithFS(osFS{}, verbose, dir, archive, files...)
+	extractWithFS(clifs.DefaultFS{}, verbose, dir, archive, files...)
 }
 
-func extractWithFS(fsys ExtractorFS, verbose bool, dir string, archive string, files ...string) {
+func extractWithFS(fsys clifs.FS, verbose bool, dir string, archive string, files ...string) {
 	a, err := txtar.ParseFile(archive)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
+		fmt.Fprintf(fsys.Stderr(), "Error parsing archive: %v\n", err)
 		os.Exit(1)
 	}
 
 	if dir != "." && dir != "" {
 		if err := fsys.MkdirAll(dir, 0755); err != nil {
 			if !os.IsExist(err) {
-				fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
+				fmt.Fprintf(fsys.Stderr(), "Error creating output directory: %v\n", err)
 				os.Exit(1)
 			}
 		}
@@ -473,7 +459,7 @@ func extractWithFS(fsys ExtractorFS, verbose bool, dir string, archive string, f
 	for _, f := range a.Files {
 		// Security: prevent path traversal
 		if strings.HasPrefix(f.Name, "/") || strings.HasPrefix(f.Name, "../") || strings.Contains(f.Name, "/../") {
-			fmt.Fprintf(os.Stderr, "Warning: skipping file with unsafe path: %s\n", f.Name)
+			fmt.Fprintf(fsys.Stderr(), "Warning: skipping file with unsafe path: %s\n", f.Name)
 			continue
 		}
 
@@ -494,15 +480,15 @@ func extractWithFS(fsys ExtractorFS, verbose bool, dir string, archive string, f
 			outDir := filepath.Dir(outPath)
 
 			if err := fsys.MkdirAll(outDir, 0755); err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating directory for %s: %v\n", f.Name, err)
+				fmt.Fprintf(fsys.Stderr(), "Error creating directory for %s: %v\n", f.Name, err)
 				os.Exit(1)
 			}
 
 			if verbose {
-				fmt.Printf("Extracting %s\n", f.Name)
+				fmt.Fprintf(fsys.Stdout(), "Extracting %s\n", f.Name)
 			}
 			if err := fsys.WriteFile(outPath, f.Data, 0644); err != nil {
-				fmt.Fprintf(os.Stderr, "Error writing file %s: %v\n", f.Name, err)
+				fmt.Fprintf(fsys.Stderr(), "Error writing file %s: %v\n", f.Name, err)
 				os.Exit(1)
 			}
 		}

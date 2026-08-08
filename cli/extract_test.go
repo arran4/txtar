@@ -11,8 +11,10 @@ import (
 )
 
 type mockFSType struct {
-	files map[string][]byte
-	dirs  map[string]bool
+	files  map[string][]byte
+	dirs   map[string]bool
+	stdout *bytes.Buffer
+	stderr *bytes.Buffer
 }
 
 func (m *mockFSType) MkdirAll(path string, perm os.FileMode) error {
@@ -23,6 +25,14 @@ func (m *mockFSType) MkdirAll(path string, perm os.FileMode) error {
 func (m *mockFSType) WriteFile(name string, data []byte, perm os.FileMode) error {
 	m.files[name] = data
 	return nil
+}
+
+func (m *mockFSType) Stdout() io.Writer {
+	return m.stdout
+}
+
+func (m *mockFSType) Stderr() io.Writer {
+	return m.stderr
 }
 
 func TestExtract(t *testing.T) {
@@ -78,22 +88,13 @@ func TestExtract(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Initialize mock state
 			m := &mockFSType{
-				files: make(map[string][]byte),
-				dirs:  make(map[string]bool),
+				files:  make(map[string][]byte),
+				dirs:   make(map[string]bool),
+				stdout: new(bytes.Buffer),
+				stderr: new(bytes.Buffer),
 			}
 
-			// Capture stdout and stderr
-			oldStdout := os.Stdout
-			oldStderr := os.Stderr
-			_, w, _ := os.Pipe()
-			os.Stdout = w
-			os.Stderr = w
-
 			extractWithFS(m, false, outDir, archivePath, tt.args...)
-
-			_ = w.Close()
-			os.Stdout = oldStdout
-			os.Stderr = oldStderr
 
 			for _, w := range tt.want {
 				content, ok := m.files[filepath.Join(outDir, w)]
@@ -124,8 +125,10 @@ func TestExtract(t *testing.T) {
 	t.Run("path traversal", func(t *testing.T) {
 		// Initialize mock state
 		m := &mockFSType{
-			files: make(map[string][]byte),
-			dirs:  make(map[string]bool),
+			files:  make(map[string][]byte),
+			dirs:   make(map[string]bool),
+			stdout: new(bytes.Buffer),
+			stderr: new(bytes.Buffer),
 		}
 
 		a := new(txtar.Archive)
@@ -144,23 +147,9 @@ func TestExtract(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Capture stdout and stderr
-		oldStdout := os.Stdout
-		oldStderr := os.Stderr
-		r, w, _ := os.Pipe()
-		os.Stdout = w
-		os.Stderr = w
-
 		extractWithFS(m, false, secOutDir, secArchivePath)
 
-		_ = w.Close()
-		os.Stdout = oldStdout
-		os.Stderr = oldStderr
-
-		// Check output for warnings
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		output := buf.String()
+		output := m.stderr.String()
 
 		if !strings.Contains(output, "Warning: skipping file with unsafe path: ../outside.txt") {
 			t.Errorf("Expected warning for ../outside.txt")
