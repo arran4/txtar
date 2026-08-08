@@ -494,3 +494,93 @@ func extractWithFS(fsys clifs.FS, verbose bool, dir string, archive string, file
 		}
 	}
 }
+
+// Description is a subcommand `txtar description` -- Show or edit archive description
+//
+// Flags:
+//
+//	replace:	-r --replace	(default: false)	Replace description
+//	appendDesc:	-a --append		(default: false)	Append to description
+//	edit:		-e --edit		(default: "")		Edit specific lines (format: <start>-<end>)
+//	archive:	@1									Archive file
+//	text:		...									Text to use
+func Description(replace bool, appendDesc bool, edit string, archive string, text ...string) {
+	descriptionWithFS(clifs.DefaultFS{}, replace, appendDesc, edit, archive, text...)
+}
+
+func descriptionWithFS(fsys clifs.FS, replace bool, appendDesc bool, edit string, archive string, text ...string) {
+	a, err := txtar.ParseFile(archive)
+	if err != nil {
+		_, _ = fmt.Fprintf(fsys.Stderr(), "Error parsing archive: %v\n", err)
+		os.Exit(1)
+	}
+
+	inputText := strings.Join(text, " ")
+
+	if !replace && !appendDesc && edit == "" {
+		_, _ = fmt.Fprint(fsys.Stdout(), string(a.Comment))
+		return
+	}
+
+	lines := strings.Split(string(a.Comment), "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+
+	if replace {
+		a.SetComment(inputText + "\n")
+	} else if appendDesc {
+		newComment := string(a.Comment)
+		if len(newComment) > 0 && !strings.HasSuffix(newComment, "\n") {
+			newComment += "\n"
+		}
+		newComment += inputText + "\n"
+		a.SetComment(newComment)
+	} else if edit != "" {
+		parts := strings.Split(edit, "-")
+		if len(parts) != 2 {
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Invalid edit format, expected <start>-<end>\n")
+			os.Exit(1)
+		}
+
+		var start, end int
+		if _, err := fmt.Sscanf(parts[0], "%d", &start); err != nil {
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Invalid start line number\n")
+			os.Exit(1)
+		}
+		if _, err := fmt.Sscanf(parts[1], "%d", &end); err != nil {
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Invalid end line number\n")
+			os.Exit(1)
+		}
+
+		if start < 1 || end < start {
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Invalid line numbers\n")
+			os.Exit(1)
+		}
+
+		if start > len(lines) {
+			start = len(lines) + 1
+		}
+		if end > len(lines) {
+			end = len(lines)
+		}
+
+		newLines := make([]string, 0)
+		newLines = append(newLines, lines[:start-1]...)
+		newLines = append(newLines, inputText)
+		if end < len(lines) {
+			newLines = append(newLines, lines[end:]...)
+		}
+
+		newComment := strings.Join(newLines, "\n")
+		if len(newLines) > 0 {
+			newComment += "\n"
+		}
+		a.SetComment(newComment)
+	}
+
+	if err := fsys.WriteFile(archive, txtar.Format(a), 0644); err != nil {
+		_, _ = fmt.Fprintf(fsys.Stderr(), "Error writing archive: %v\n", err)
+		os.Exit(1)
+	}
+}

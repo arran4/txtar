@@ -9,6 +9,7 @@ Subcommands:
     comment                                  Show or set archive comment
     create                                   Create a new archive
     delete                                   Delete files from archive
+    description                              Show or edit archive description
     extract                                  Extract files from an archive
     list                                     List files in archive with index, offset, size, name
 {{else}}
@@ -18,6 +19,7 @@ Subcommands:
     comment    Show or set archive comment
     create     Create a new archive
     delete     Delete files from archive
+    description Show or edit archive description
     extract    Extract files from an archive
     list       List files in archive with index, offset, size, name
 {{end}}
