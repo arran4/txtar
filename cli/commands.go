@@ -10,11 +10,6 @@ import (
 )
 
 
-var (
-	osMkdirAll  = os.MkdirAll
-	osWriteFile = os.WriteFile
-)
-
 // Create is a subcommand `txtar create` -- Create a new archive
 //
 // Flags:
@@ -431,6 +426,22 @@ func Comment(comment string, file string, archive string) {
 	}
 }
 
+
+type ExtractorFS interface {
+	MkdirAll(path string, perm os.FileMode) error
+	WriteFile(name string, data []byte, perm os.FileMode) error
+}
+
+type osFS struct{}
+
+func (osFS) MkdirAll(path string, perm os.FileMode) error {
+	return os.MkdirAll(path, perm)
+}
+
+func (osFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(name, data, perm)
+}
+
 // Extract is a subcommand `txtar extract` -- Extract files from an archive
 //
 // Flags:
@@ -440,6 +451,10 @@ func Comment(comment string, file string, archive string) {
 //	archive:	@1				Archive file
 //	files:		...				Files to extract (names or glob patterns)
 func Extract(verbose bool, dir string, archive string, files ...string) {
+	extractWithFS(osFS{}, verbose, dir, archive, files...)
+}
+
+func extractWithFS(fsys ExtractorFS, verbose bool, dir string, archive string, files ...string) {
 	a, err := txtar.ParseFile(archive)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing archive: %v\n", err)
@@ -447,7 +462,7 @@ func Extract(verbose bool, dir string, archive string, files ...string) {
 	}
 
 	if dir != "." && dir != "" {
-		if err := osMkdirAll(dir, 0755); err != nil {
+		if err := fsys.MkdirAll(dir, 0755); err != nil {
 			if !os.IsExist(err) {
 				fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
 				os.Exit(1)
@@ -478,7 +493,7 @@ func Extract(verbose bool, dir string, archive string, files ...string) {
 			outPath := filepath.Join(dir, f.Name)
 			outDir := filepath.Dir(outPath)
 
-			if err := osMkdirAll(outDir, 0755); err != nil {
+			if err := fsys.MkdirAll(outDir, 0755); err != nil {
 				fmt.Fprintf(os.Stderr, "Error creating directory for %s: %v\n", f.Name, err)
 				os.Exit(1)
 			}
@@ -486,7 +501,7 @@ func Extract(verbose bool, dir string, archive string, files ...string) {
 			if verbose {
 				fmt.Printf("Extracting %s\n", f.Name)
 			}
-			if err := osWriteFile(outPath, f.Data, 0644); err != nil {
+			if err := fsys.WriteFile(outPath, f.Data, 0644); err != nil {
 				fmt.Fprintf(os.Stderr, "Error writing file %s: %v\n", f.Name, err)
 				os.Exit(1)
 			}
