@@ -443,14 +443,14 @@ func Extract(verbose bool, dir string, archive string, files ...string) {
 func extractWithFS(fsys clifs.FS, verbose bool, dir string, archive string, files ...string) {
 	a, err := txtar.ParseFile(archive)
 	if err != nil {
-		fmt.Fprintf(fsys.Stderr(), "Error parsing archive: %v\n", err)
+		_, _ = fmt.Fprintf(fsys.Stderr(), "Error parsing archive: %v\n", err)
 		os.Exit(1)
 	}
 
 	if dir != "." && dir != "" {
 		if err := fsys.MkdirAll(dir, 0755); err != nil {
 			if !os.IsExist(err) {
-				fmt.Fprintf(fsys.Stderr(), "Error creating output directory: %v\n", err)
+				_, _ = fmt.Fprintf(fsys.Stderr(), "Error creating output directory: %v\n", err)
 				os.Exit(1)
 			}
 		}
@@ -459,7 +459,7 @@ func extractWithFS(fsys clifs.FS, verbose bool, dir string, archive string, file
 	for _, f := range a.Files {
 		// Security: prevent path traversal
 		if strings.HasPrefix(f.Name, "/") || strings.HasPrefix(f.Name, "../") || strings.Contains(f.Name, "/../") {
-			fmt.Fprintf(fsys.Stderr(), "Warning: skipping file with unsafe path: %s\n", f.Name)
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Warning: skipping file with unsafe path: %s\n", f.Name)
 			continue
 		}
 
@@ -480,15 +480,15 @@ func extractWithFS(fsys clifs.FS, verbose bool, dir string, archive string, file
 			outDir := filepath.Dir(outPath)
 
 			if err := fsys.MkdirAll(outDir, 0755); err != nil {
-				fmt.Fprintf(fsys.Stderr(), "Error creating directory for %s: %v\n", f.Name, err)
+				_, _ = fmt.Fprintf(fsys.Stderr(), "Error creating directory for %s: %v\n", f.Name, err)
 				os.Exit(1)
 			}
 
 			if verbose {
-				fmt.Fprintf(fsys.Stdout(), "Extracting %s\n", f.Name)
+				_, _ = fmt.Fprintf(fsys.Stdout(), "Extracting %s\n", f.Name)
 			}
 			if err := fsys.WriteFile(outPath, f.Data, 0644); err != nil {
-				fmt.Fprintf(fsys.Stderr(), "Error writing file %s: %v\n", f.Name, err)
+				_, _ = fmt.Fprintf(fsys.Stderr(), "Error writing file %s: %v\n", f.Name, err)
 				os.Exit(1)
 			}
 		}
