@@ -12,38 +12,39 @@ import (
 	"txtar/cli"
 )
 
-var _ Cmd = (*Cat)(nil)
+var _ Cmd = (*Extract)(nil)
 
-type Cat struct {
+type Extract struct {
 	*RootCmd
 	Flags         *flag.FlagSet
+	verbose       bool
+	dir           string
 	archive       string
-	txt           bool
 	files         []string
 	SubCommands   map[string]func() Cmd
-	CommandAction func(c *Cat) error
+	CommandAction func(c *Extract) error
 }
 
-type UsageDataCat struct {
-	*Cat
+type UsageDataExtract struct {
+	*Extract
 	Recursive bool
 }
 
-func (c *Cat) Usage() {
-	err := executeUsage(os.Stderr, "cat_usage.txt", UsageDataCat{c, false})
+func (c *Extract) Usage() {
+	err := executeUsage(os.Stderr, "extract_usage.txt", UsageDataExtract{c, false})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating usage: %s\n", err)
 	}
 }
 
-func (c *Cat) UsageRecursive() {
-	err := executeUsage(os.Stderr, "cat_usage.txt", UsageDataCat{c, true})
+func (c *Extract) UsageRecursive() {
+	err := executeUsage(os.Stderr, "extract_usage.txt", UsageDataExtract{c, true})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating usage: %s\n", err)
 	}
 }
 
-func (c *Cat) Execute(args []string) error {
+func (c *Extract) Execute(args []string) error {
 	var remainingArgs []string
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -69,16 +70,27 @@ func (c *Cat) Execute(args []string) error {
 			_ = hasValue
 			switch name {
 
-			case "txt":
+			case "verbose":
 				if hasValue {
 					b, err := strconv.ParseBool(value)
 					if err != nil {
 						return fmt.Errorf("invalid boolean value for flag %s: %s", name, value)
 					}
-					c.txt = b
+					c.verbose = b
 				} else {
-					c.txt = true
+					c.verbose = true
 				}
+
+			case "dir":
+				if !hasValue {
+					if i+1 < len(args) {
+						value = args[i+1]
+						i++
+					} else {
+						return fmt.Errorf("flag %s requires a value", name)
+					}
+				}
+				c.dir = value
 			default:
 				return fmt.Errorf("unknown flag: --%s", name)
 			}
@@ -93,9 +105,32 @@ func (c *Cat) Execute(args []string) error {
 				}
 				found := false
 
-				if char == "t" {
+				if char == "v" {
 					found = true
-					c.txt = true
+					c.verbose = true
+				}
+
+				if char == "d" {
+					found = true
+					// Value flag
+					value := ""
+					if j+1 < len(shorts) {
+						// Value is the rest of the short flag
+						value = shorts[j+1:]
+						if strings.HasPrefix(value, "=") {
+							value = value[1:]
+						}
+						j = len(shorts) // break inner loop
+					} else {
+						// Value is the next arg
+						if i+1 < len(args) {
+							value = args[i+1]
+							i++
+						} else {
+							return fmt.Errorf("flag -%s requires a value", char)
+						}
+					}
+					c.dir = value
 				}
 				if !found {
 					return fmt.Errorf("unknown flag: -%s", char)
@@ -136,7 +171,7 @@ func (c *Cat) Execute(args []string) error {
 
 	if c.CommandAction != nil {
 		if err := c.CommandAction(c); err != nil {
-			return fmt.Errorf("cat failed: %w", err)
+			return fmt.Errorf("extract failed: %w", err)
 		}
 	} else {
 		c.Usage()
@@ -145,21 +180,24 @@ func (c *Cat) Execute(args []string) error {
 	return nil
 }
 
-func (c *RootCmd) NewCat() *Cat {
-	set := flag.NewFlagSet("cat", flag.ContinueOnError)
-	v := &Cat{
+func (c *RootCmd) NewExtract() *Extract {
+	set := flag.NewFlagSet("extract", flag.ContinueOnError)
+	v := &Extract{
 		RootCmd:     c,
 		Flags:       set,
 		SubCommands: make(map[string]func() Cmd),
 	}
 
-	set.BoolVar(&v.txt, "txt", false, "Extract/cat content of files inside archive")
-	set.BoolVar(&v.txt, "t", false, "Extract/cat content of files inside archive")
+	set.BoolVar(&v.verbose, "verbose", false, "Verbose output")
+	set.BoolVar(&v.verbose, "v", false, "Verbose output")
+
+	set.StringVar(&v.dir, "dir", ".", "Output directory")
+	set.StringVar(&v.dir, "d", ".", "Output directory")
 	set.Usage = v.Usage
 
-	v.CommandAction = func(c *Cat) error {
+	v.CommandAction = func(c *Extract) error {
 
-		cli.Cat(c.archive, c.txt, c.files...)
+		cli.Extract(c.verbose, c.dir, c.archive, c.files...)
 		return nil
 	}
 

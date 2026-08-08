@@ -11,7 +11,7 @@ func TestCat_Execute(t *testing.T) {
 
 	parent := &RootCmd{
 		FlagSet:  flag.NewFlagSet("root", flag.ContinueOnError),
-		Commands: make(map[string]Cmd),
+		Commands: make(map[string]func() Cmd),
 	}
 	cmd := parent.NewCat()
 
@@ -22,13 +22,14 @@ func TestCat_Execute(t *testing.T) {
 	}
 
 	args := []string{}
-	args = append(args, "test")
 	args = append(args, "--txt")
+	args = append(args, "test")
 
 	err := cmd.Execute(args)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
+
 	if !called {
 		t.Error("CommandAction was not called")
 	}
@@ -38,5 +39,27 @@ func TestCat_Execute(t *testing.T) {
 	}
 	if cmd.txt != true {
 		t.Errorf("Expected txt to be true, got '%v'", cmd.txt)
+	}
+}
+
+func TestCat_ExecuteHelpAndUnknownFlags(t *testing.T) {
+
+	parent := &RootCmd{
+		FlagSet:  flag.NewFlagSet("root", flag.ContinueOnError),
+		Commands: make(map[string]func() Cmd),
+	}
+	cmd := parent.NewCat()
+
+	if err := cmd.Execute([]string{"--help"}); err != nil {
+		t.Errorf("--help returned an error: %v", err)
+	}
+	if err := cmd.Execute([]string{"-h"}); err != nil {
+		t.Errorf("-h returned an error: %v", err)
+	}
+	if err := cmd.Execute([]string{"--not-a-real-flag"}); err == nil {
+		t.Error("expected an error for an unknown long flag")
+	}
+	if err := cmd.Execute([]string{"-?"}); err == nil {
+		t.Error("expected an error for an unknown short flag")
 	}
 }

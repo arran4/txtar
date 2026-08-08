@@ -6,8 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
-
 	"txtar/cli"
 )
 
@@ -17,7 +17,7 @@ type List struct {
 	*RootCmd
 	Flags         *flag.FlagSet
 	archive       string
-	SubCommands   map[string]Cmd
+	SubCommands   map[string]func() Cmd
 	CommandAction func(c *List) error
 }
 
@@ -41,11 +41,6 @@ func (c *List) UsageRecursive() {
 }
 
 func (c *List) Execute(args []string) error {
-	if len(args) > 0 {
-		if cmd, ok := c.SubCommands[args[0]]; ok {
-			return cmd.Execute(args[1:])
-		}
-	}
 	var remainingArgs []string
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -53,18 +48,49 @@ func (c *List) Execute(args []string) error {
 			remainingArgs = append(remainingArgs, args[i+1:]...)
 			break
 		}
-		if strings.HasPrefix(arg, "-") && arg != "-" {
-			name := arg
-			trimmedName := strings.TrimLeft(name, "-")
-			switch trimmedName {
-			case "help", "h":
+		if strings.HasPrefix(arg, "--") {
+			if arg == "--help" {
 				c.Usage()
 				return nil
+			}
+			name := arg[2:]
+			value := ""
+			hasValue := false
+			if strings.Contains(name, "=") {
+				parts := strings.SplitN(name, "=", 2)
+				name = parts[0]
+				value = parts[1]
+				hasValue = true
+			}
+			_ = value
+			_ = hasValue
+			switch name {
 			default:
-				return fmt.Errorf("unknown flag: %s", name)
+				return fmt.Errorf("unknown flag: --%s", name)
+			}
+		} else if strings.HasPrefix(arg, "-") && arg != "-" {
+			// Short flags
+			shorts := arg[1:]
+			for j := 0; j < len(shorts); j++ {
+				char := string(shorts[j])
+				if char == "h" {
+					c.Usage()
+					return nil
+				}
+				found := false
+				if !found {
+					return fmt.Errorf("unknown flag: -%s", char)
+				}
 			}
 		} else {
-			remainingArgs = append(remainingArgs, arg)
+			remainingArgs = append(remainingArgs, args[i:]...)
+			break
+		}
+	}
+
+	if len(remainingArgs) > 0 {
+		if cmd, ok := c.SubCommands[remainingArgs[0]]; ok {
+			return cmd().Execute(remainingArgs[1:])
 		}
 	}
 	if len(remainingArgs) < 1 {
@@ -76,6 +102,7 @@ func (c *List) Execute(args []string) error {
 		if argIndex >= 0 && argIndex < len(remainingArgs) {
 			argVal := remainingArgs[argIndex]
 			c.archive = argVal
+		} else {
 		}
 	}
 
@@ -95,7 +122,7 @@ func (c *RootCmd) NewList() *List {
 	v := &List{
 		RootCmd:     c,
 		Flags:       set,
-		SubCommands: make(map[string]Cmd),
+		SubCommands: make(map[string]func() Cmd),
 	}
 	set.Usage = v.Usage
 
@@ -105,31 +132,31 @@ func (c *RootCmd) NewList() *List {
 		return nil
 	}
 
-	v.SubCommands["help"] = &InternalCommand{
-		Exec: func(args []string) error {
-			for _, arg := range args {
-				if arg == "-deep" {
+	v.SubCommands["help"] = func() Cmd {
+		return &InternalCommand{
+			Exec: func(args []string) error {
+				if slices.Contains(args, "-deep") {
 					v.UsageRecursive()
 					return nil
 				}
-			}
-			v.Usage()
-			return nil
-		},
-		UsageFunc: v.Usage,
+				v.Usage()
+				return nil
+			},
+			UsageFunc: v.Usage,
+		}
 	}
-	v.SubCommands["usage"] = &InternalCommand{
-		Exec: func(args []string) error {
-			for _, arg := range args {
-				if arg == "-deep" {
+	v.SubCommands["usage"] = func() Cmd {
+		return &InternalCommand{
+			Exec: func(args []string) error {
+				if slices.Contains(args, "-deep") {
 					v.UsageRecursive()
 					return nil
 				}
-			}
-			v.Usage()
-			return nil
-		},
-		UsageFunc: v.Usage,
+				v.Usage()
+				return nil
+			},
+			UsageFunc: v.Usage,
+		}
 	}
 	return v
 }

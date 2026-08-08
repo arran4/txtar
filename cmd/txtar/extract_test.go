@@ -7,24 +7,23 @@ import (
 	"testing"
 )
 
-func TestComment_Execute(t *testing.T) {
+func TestExtract_Execute(t *testing.T) {
 
 	parent := &RootCmd{
 		FlagSet:  flag.NewFlagSet("root", flag.ContinueOnError),
 		Commands: make(map[string]func() Cmd),
 	}
-	cmd := parent.NewComment()
+	cmd := parent.NewExtract()
 
 	called := false
-	cmd.CommandAction = func(c *Comment) error {
+	cmd.CommandAction = func(c *Extract) error {
 		called = true
 		return nil
 	}
 
 	args := []string{}
-	args = append(args, "--comment")
-	args = append(args, "test")
-	args = append(args, "--file")
+	args = append(args, "--verbose")
+	args = append(args, "--dir")
 	args = append(args, "test")
 	args = append(args, "test")
 
@@ -37,24 +36,24 @@ func TestComment_Execute(t *testing.T) {
 		t.Error("CommandAction was not called")
 	}
 
-	if cmd.comment != "test" {
-		t.Errorf("Expected comment to be 'test', got '%v'", cmd.comment)
+	if cmd.verbose != true {
+		t.Errorf("Expected verbose to be true, got '%v'", cmd.verbose)
 	}
-	if cmd.file != "test" {
-		t.Errorf("Expected file to be 'test', got '%v'", cmd.file)
+	if cmd.dir != "test" {
+		t.Errorf("Expected dir to be 'test', got '%v'", cmd.dir)
 	}
 	if cmd.archive != "test" {
 		t.Errorf("Expected archive to be 'test', got '%v'", cmd.archive)
 	}
 }
 
-func TestComment_ExecuteHelpAndUnknownFlags(t *testing.T) {
+func TestExtract_ExecuteHelpAndUnknownFlags(t *testing.T) {
 
 	parent := &RootCmd{
 		FlagSet:  flag.NewFlagSet("root", flag.ContinueOnError),
 		Commands: make(map[string]func() Cmd),
 	}
-	cmd := parent.NewComment()
+	cmd := parent.NewExtract()
 
 	if err := cmd.Execute([]string{"--help"}); err != nil {
 		t.Errorf("--help returned an error: %v", err)

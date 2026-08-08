@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"txtar"
+	"txtar/internal/clifs"
 )
+
 
 // Create is a subcommand `txtar create` -- Create a new archive
 //
@@ -422,5 +424,73 @@ func Comment(comment string, file string, archive string) {
 	if err := os.WriteFile(archive, txtar.Format(a), 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing archive: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+
+// Extract is a subcommand `txtar extract` -- Extract files from an archive
+//
+// Flags:
+//
+//	verbose:	-v --verbose	(default: false)	Verbose output
+//	dir:		-d --dir		(default: ".")	Output directory
+//	archive:	@1				Archive file
+//	files:		...				Files to extract (names or glob patterns)
+func Extract(verbose bool, dir string, archive string, files ...string) {
+	extractWithFS(clifs.DefaultFS{}, verbose, dir, archive, files...)
+}
+
+func extractWithFS(fsys clifs.FS, verbose bool, dir string, archive string, files ...string) {
+	a, err := txtar.ParseFile(archive)
+	if err != nil {
+		_, _ = fmt.Fprintf(fsys.Stderr(), "Error parsing archive: %v\n", err)
+		os.Exit(1)
+	}
+
+	if dir != "." && dir != "" {
+		if err := fsys.MkdirAll(dir, 0755); err != nil {
+			if !os.IsExist(err) {
+				_, _ = fmt.Fprintf(fsys.Stderr(), "Error creating output directory: %v\n", err)
+				os.Exit(1)
+			}
+		}
+	}
+
+	for _, f := range a.Files {
+		// Security: prevent path traversal
+		if strings.HasPrefix(f.Name, "/") || strings.HasPrefix(f.Name, "../") || strings.Contains(f.Name, "/../") {
+			_, _ = fmt.Fprintf(fsys.Stderr(), "Warning: skipping file with unsafe path: %s\n", f.Name)
+			continue
+		}
+
+		// Check if we should extract this file
+		extract := len(files) == 0
+		if !extract {
+			for _, pattern := range files {
+				matched, _ := filepath.Match(pattern, f.Name)
+				if matched {
+					extract = true
+					break
+				}
+			}
+		}
+
+		if extract {
+			outPath := filepath.Join(dir, f.Name)
+			outDir := filepath.Dir(outPath)
+
+			if err := fsys.MkdirAll(outDir, 0755); err != nil {
+				_, _ = fmt.Fprintf(fsys.Stderr(), "Error creating directory for %s: %v\n", f.Name, err)
+				os.Exit(1)
+			}
+
+			if verbose {
+				_, _ = fmt.Fprintf(fsys.Stdout(), "Extracting %s\n", f.Name)
+			}
+			if err := fsys.WriteFile(outPath, f.Data, 0644); err != nil {
+				_, _ = fmt.Fprintf(fsys.Stderr(), "Error writing file %s: %v\n", f.Name, err)
+				os.Exit(1)
+			}
+		}
 	}
 }
