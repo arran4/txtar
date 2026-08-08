@@ -9,19 +9,30 @@ import (
 	"txtar"
 )
 
-func runDescriptionWithOutput(replace bool, appendDesc bool, edit string, archive string, text ...string) string {
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+type MockFS struct {
+	Files map[string][]byte
+	Out   bytes.Buffer
+	Err   bytes.Buffer
+}
 
-	Description(replace, appendDesc, edit, archive, text...)
+func (m *MockFS) MkdirAll(path string, perm os.FileMode) error {
+	return nil
+}
 
-	_ = w.Close()
-	os.Stdout = oldStdout
+func (m *MockFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	if m.Files == nil {
+		m.Files = make(map[string][]byte)
+	}
+	m.Files[name] = data
+	return nil
+}
 
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-	return buf.String()
+func (m *MockFS) Stdout() io.Writer {
+	return &m.Out
+}
+
+func (m *MockFS) Stderr() io.Writer {
+	return &m.Err
 }
 
 func TestDescription(t *testing.T) {
@@ -33,16 +44,15 @@ func TestDescription(t *testing.T) {
 	a.Comment = []byte("line 1\nline 2\nline 3\n")
 	a.Set("file1.txt", []byte("content1\n"))
 
-	if err := os.WriteFile(archivePath, txtar.Format(a), 0644); err != nil {
-		t.Fatalf("Failed to create test archive: %v", err)
-	}
+	_ = os.WriteFile(archivePath, txtar.Format(a), 0644)
 
 	t.Run("Show", func(t *testing.T) {
-		output := runDescriptionWithOutput(false, false, "", archivePath)
+		fsys := &MockFS{}
+		descriptionWithFS(fsys, false, false, "", archivePath)
 
 		expected := "line 1\nline 2\nline 3\n"
-		if output != expected {
-			t.Errorf("Expected %q, got %q", expected, output)
+		if fsys.Out.String() != expected {
+			t.Errorf("Expected %q, got %q", expected, fsys.Out.String())
 		}
 	})
 
@@ -50,12 +60,10 @@ func TestDescription(t *testing.T) {
 		tempFile := filepath.Join(t.TempDir(), "replace.txtar")
 		_ = os.WriteFile(tempFile, txtar.Format(a), 0644)
 
-		Description(true, false, "", tempFile, "new line 1", "new line 2")
+		fsys := &MockFS{}
+		descriptionWithFS(fsys, true, false, "", tempFile, "new line 1", "new line 2")
 
-		readA, err := txtar.ParseFile(tempFile)
-		if err != nil {
-			t.Fatalf("Failed to parse archive: %v", err)
-		}
+		readA := txtar.Parse(fsys.Files[tempFile])
 		expected := "new line 1 new line 2\n"
 		if string(readA.Comment) != expected {
 			t.Errorf("Expected %q, got %q", expected, string(readA.Comment))
@@ -66,12 +74,10 @@ func TestDescription(t *testing.T) {
 		tempFile := filepath.Join(t.TempDir(), "append.txtar")
 		_ = os.WriteFile(tempFile, txtar.Format(a), 0644)
 
-		Description(false, true, "", tempFile, "line 4")
+		fsys := &MockFS{}
+		descriptionWithFS(fsys, false, true, "", tempFile, "line 4")
 
-		readA, err := txtar.ParseFile(tempFile)
-		if err != nil {
-			t.Fatalf("Failed to parse archive: %v", err)
-		}
+		readA := txtar.Parse(fsys.Files[tempFile])
 		expected := "line 1\nline 2\nline 3\nline 4\n"
 		if string(readA.Comment) != expected {
 			t.Errorf("Expected %q, got %q", expected, string(readA.Comment))
@@ -82,12 +88,10 @@ func TestDescription(t *testing.T) {
 		tempFile := filepath.Join(t.TempDir(), "edit.txtar")
 		_ = os.WriteFile(tempFile, txtar.Format(a), 0644)
 
-		Description(false, false, "2-2", tempFile, "new line 2")
+		fsys := &MockFS{}
+		descriptionWithFS(fsys, false, false, "2-2", tempFile, "new line 2")
 
-		readA, err := txtar.ParseFile(tempFile)
-		if err != nil {
-			t.Fatalf("Failed to parse archive: %v", err)
-		}
+		readA := txtar.Parse(fsys.Files[tempFile])
 		expected := "line 1\nnew line 2\nline 3\n"
 		if string(readA.Comment) != expected {
 			t.Errorf("Expected %q, got %q", expected, string(readA.Comment))
@@ -98,12 +102,10 @@ func TestDescription(t *testing.T) {
 		tempFile := filepath.Join(t.TempDir(), "edit2.txtar")
 		_ = os.WriteFile(tempFile, txtar.Format(a), 0644)
 
-		Description(false, false, "1-2", tempFile, "replaced lines 1 and 2")
+		fsys := &MockFS{}
+		descriptionWithFS(fsys, false, false, "1-2", tempFile, "replaced lines 1 and 2")
 
-		readA, err := txtar.ParseFile(tempFile)
-		if err != nil {
-			t.Fatalf("Failed to parse archive: %v", err)
-		}
+		readA := txtar.Parse(fsys.Files[tempFile])
 		expected := "replaced lines 1 and 2\nline 3\n"
 		if string(readA.Comment) != expected {
 			t.Errorf("Expected %q, got %q", expected, string(readA.Comment))
