@@ -25,12 +25,17 @@ jobs:
         run: go test ./...
       - name: Vet all Go packages
         run: go vet ./...
-      - name: Verify gosubc-generated sources
+      - name: Verify gosubc-generated sources in isolated copy
         shell: bash
         run: |
           set -euo pipefail
-          go generate ./cmd/txtar
-          git diff --exit-code -- cmd
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          cp -a . "$work/source"
+          # The integration test is hand-written, not owned by gosubc.
+          rm "$work/source/cmd/txtar/comment_integration_test.go"
+          (cd "$work/source" && go generate ./cmd/txtar)
+          diff -ru --exclude=comment_integration_test.go cmd "$work/source/cmd"
       - name: Install and run CLI from clean consumer environment
         env:
           REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
