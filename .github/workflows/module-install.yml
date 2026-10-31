@@ -21,6 +21,16 @@ jobs:
           go-version-file: go.mod
       - name: Verify module identity
         run: test "$(go list -m)" = "github.com/arran4/txtar"
+      - name: Test all Go packages
+        run: go test ./...
+      - name: Vet all Go packages
+        run: go vet ./...
+      - name: Verify gosubc-generated sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          go generate ./cmd/txtar
+          git diff --exit-code -- cmd
       - name: Install and run CLI from clean consumer environment
         env:
           REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
