@@ -5,10 +5,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/arran4/txtar/cli"
 	"os"
 	"slices"
 	"strings"
-	"github.com/arran4/txtar/cli"
 )
 
 var _ Cmd = (*Comment)(nil)

@@ -5,11 +5,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/arran4/txtar/cli"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
-	"github.com/arran4/txtar/cli"
 )
 
 var _ Cmd = (*Extract)(nil)
