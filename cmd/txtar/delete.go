@@ -8,7 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"txtar/cli"
+	"github.com/arran4/txtar/cli"
 )
 
 var _ Cmd = (*Delete)(nil)

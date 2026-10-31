@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"txtar"
-	"txtar/internal/clifs"
+	"github.com/arran4/txtar"
+	"github.com/arran4/txtar/internal/clifs"
 )
 
 

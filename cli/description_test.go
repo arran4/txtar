@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"txtar"
+	"github.com/arran4/txtar"
 )
 
 type MockFS struct {

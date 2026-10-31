@@ -7,7 +7,7 @@ package txtar_test
 import (
 	"io/fs"
 	"testing"
-	"txtar"
+	"github.com/arran4/txtar"
 )
 
 func TestRemove(t *testing.T) {

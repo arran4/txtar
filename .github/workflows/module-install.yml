@@ -1,0 +1,51 @@
+name: Canonical Go module installation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  remote-install:
+    # A fork's head commit is not necessarily reachable from the canonical module URL.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Verify module identity
+        run: test "$(go list -m)" = "github.com/arran4/txtar"
+      - name: Install and run CLI from clean consumer environment
+        env:
+          REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          cd "$work"
+          GOWORK=off GOPROXY=direct GOBIN="$work/bin" go install "github.com/arran4/txtar/cmd/txtar@${REVISION}"
+          "$work/bin/txtar" version | grep -q '^Version:'
+      - name: Import library in clean consumer module
+        env:
+          REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          cd "$work"
+          go mod init example.com/txtar-smoke
+          GOWORK=off GOPROXY=direct go get "github.com/arran4/txtar@${REVISION}"
+          cat > main.go <<'EOF'
+          package main
+          import "github.com/arran4/txtar"
+          func main() { _ = new(txtar.Archive) }
+          EOF
+          GOWORK=off go build -o "$work/consumer" .

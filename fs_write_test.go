@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"testing"
-	"txtar"
+	"github.com/arran4/txtar"
 )
 
 func TestFileSystemCreate(t *testing.T) {

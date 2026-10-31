@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"txtar/cli"
+	"github.com/arran4/txtar/cli"
 )
 
 var _ Cmd = (*Add)(nil)

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"txtar"
+	"github.com/arran4/txtar"
 )
 
 func TestDelete(t *testing.T) {

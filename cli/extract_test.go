@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"txtar"
+	"github.com/arran4/txtar"
 )
 
 type mockFSType struct {
