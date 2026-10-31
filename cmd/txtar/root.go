@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"txtar/cmd/txtar/templates"
+	"github.com/arran4/txtar/cmd/txtar/templates"
 )
 
 type Cmd interface {

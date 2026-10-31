@@ -10,7 +10,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"txtar"
+	"github.com/arran4/txtar"
 )
 
 func TestFS(t *testing.T) {

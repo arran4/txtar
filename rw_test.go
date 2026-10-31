@@ -3,7 +3,7 @@ package txtar_test
 import (
 	"io"
 	"testing"
-	"txtar"
+	"github.com/arran4/txtar"
 )
 
 func TestArchiveReadWrite(t *testing.T) {

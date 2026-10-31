@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"txtar/cmd"
+	"github.com/arran4/txtar/cmd"
 )
 
 var (

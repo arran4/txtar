@@ -1,4 +1,4 @@
-module txtar
+module github.com/arran4/txtar
 
 go 1.25.3
 

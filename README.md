@@ -12,8 +12,30 @@ This project extends the original library with significant enhancements, includi
 ## Installation
 
 ```bash
-go install github.com/username/txtar/cmd/txtar@latest
+go install github.com/arran4/txtar/cmd/txtar@latest
 ```
+
+The canonical module path is available from the first release after the module-path
+migration (planned as `v0.0.10`). Earlier tags, through `v0.0.9`, declare
+`module txtar` and cannot be installed remotely with this command. Use Go 1.25.3
+or newer, and pin to a released version containing the migration if reproducibility
+is required (for example, `@v0.0.10` once it has been published).
+
+### Migrating Go library consumers
+
+The import path is now `github.com/arran4/txtar` (the package name remains `txtar`).
+Update imports of `txtar`, `txtar/cli` or other `txtar/...` packages, and
+update any `require txtar` / `replace txtar` entries in downstream `go.mod`
+files. For example:
+
+```go
+import "github.com/arran4/txtar"
+```
+
+Then run `go get github.com/arran4/txtar@latest` after the new release and
+`go mod tidy`. Applications using a local checkout with `module txtar` must
+migrate their local import paths as well. This is an import-path breaking change;
+the exported package API and `txtar` command name are unchanged.
 
 ## CLI Usage
 
